@@ -732,9 +732,9 @@ app.get('/api/config', async (_req, res) => {
   let hasFs = false;
   let hasVideoFs = false;
   let hasFilesFs = false;
-  try { const e = await fs.readdir(GHOST_MEDIA_PATH);       hasFs      = e.length > 0; } catch {}
-  try { const e = await fs.readdir(GHOST_MEDIA_VIDEO_PATH); hasVideoFs = e.length > 0; } catch {}
-  try { const e = await fs.readdir(GHOST_MEDIA_FILES_PATH); hasFilesFs = e.length > 0; } catch {}
+  try { await fs.access(GHOST_MEDIA_PATH);       hasFs      = true; } catch {}
+  try { await fs.access(GHOST_MEDIA_VIDEO_PATH); hasVideoFs = true; } catch {}
+  try { await fs.access(GHOST_MEDIA_FILES_PATH); hasFilesFs = true; } catch {}
   res.json({ ghostUrl: GHOST_URL, hasFs, hasVideoFs, hasFilesFs, aiAvailable: !!ANTHROPIC_API_KEY });
 });
 
