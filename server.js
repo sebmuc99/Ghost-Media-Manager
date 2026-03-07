@@ -72,20 +72,27 @@ if (!GHOST_URL) {
 // â”€â”€â”€ Security middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(helmet({
   contentSecurityPolicy: {
+    // useDefaults: false prevents helmet adding upgrade-insecure-requests,
+    // which breaks sub-resource loading on plain-HTTP LAN/Docker deployments.
+    // All helmet security defaults are replicated explicitly below.
+    useDefaults: false,
     directives: {
-      defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'", 'https://scaleflex.cloudimg.io', 'https://fonts.googleapis.com', "'unsafe-eval'"], // unsafe-eval required by Filerobot
-      styleSrc:    ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
-      imgSrc:      ["'self'", 'data:', 'blob:', GHOST_URL, IMMICH_URL].filter(Boolean),
-      connectSrc:  ["'self'", GHOST_URL, IMMICH_URL, 'https://api.anthropic.com'].filter(Boolean),
+      defaultSrc:     ["'self'"],
+      baseUri:        ["'self'"],
+      formAction:     ["'self'"],
+      frameAncestors: ["'self'"],
+      objectSrc:      ["'none'"],
+      scriptSrc:      ["'self'", "'unsafe-inline'", 'https://scaleflex.cloudimg.io', 'https://fonts.googleapis.com', "'unsafe-eval'"], // unsafe-eval required by Filerobot
+      scriptSrcAttr:  ["'unsafe-inline'"],
+      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+      imgSrc:         ["'self'", 'data:', 'blob:', GHOST_URL, IMMICH_URL].filter(Boolean),
+      connectSrc:     ["'self'", GHOST_URL, IMMICH_URL, 'https://api.anthropic.com'].filter(Boolean),
       fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'],
       workerSrc:      ["'self'", 'blob:'],
-      scriptSrcAttr:  ["'unsafe-inline'"],
-      // Disable upgrade-insecure-requests: app is designed for HTTP-only local/LAN deployment
-      upgradeInsecureRequests: false,
+      // upgrade-insecure-requests intentionally omitted: app runs on HTTP
     },
   },
-  // Disable headers that produce browser warnings on plain-HTTP LAN deployments
+  // Disable headers that produce browser warnings on plain-HTTP LAN/Docker deployments
   crossOriginOpenerPolicy: false,
   originAgentCluster: false,
 }));
