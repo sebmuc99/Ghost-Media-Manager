@@ -81,8 +81,13 @@ app.use(helmet({
       fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'],
       workerSrc:      ["'self'", 'blob:'],
       scriptSrcAttr:  ["'unsafe-inline'"],
+      // Disable upgrade-insecure-requests: app is designed for HTTP-only local/LAN deployment
+      upgradeInsecureRequests: false,
     },
   },
+  // Disable headers that produce browser warnings on plain-HTTP LAN deployments
+  crossOriginOpenerPolicy: false,
+  originAgentCluster: false,
 }));
 const allowedOrigins = [
   process.env.GHOST_URL,
