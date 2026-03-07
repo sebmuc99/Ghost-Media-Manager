@@ -25,7 +25,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 const rateLimit     = require('express-rate-limit');
 
-const { replaceUrlInLexical, insertParagraphNodes, buildImageNode, insertImageNode, buildGalleryNode, insertGalleryNode } = require('./server/lib/lexical');
+const { replaceUrlInLexical, insertParagraphNodes, buildImageNode, insertImageNode, buildGalleryNode, insertGalleryNode, buildHtmlNode, insertHtmlNode } = require('./server/lib/lexical');
 const { ghostRequest, ghostFetchAll, getPost, updatePost, uploadImage, uploadMedia, uploadFile, getGhostLang } = require('./server/lib/ghost');
 const { walkContentDir, resolveContentPath, urlToContentPath } = require('./server/lib/filesystem');
 const { portraitToLandscape, titleToFilename } = require('./server/lib/imageProcessing');
@@ -978,7 +978,22 @@ app.post('/api/media/insert-into-post',
 
       let newLexical;
 
-      if (mode === 'gallery') {
+      if (mode === 'html') {
+        const { html } = req.body;
+
+        if (typeof html !== 'string' || !html.trim())
+          return res.status(400).json({ error: 'Missing html' });
+        if (html.length > 102400)
+          return res.status(400).json({ error: 'html payload exceeds 100 KB limit' });
+
+        const validHtmlPositions = ['end', 'beginning'];
+        if (!validHtmlPositions.includes(position))
+          return res.status(400).json({ error: 'position for html must be "end" or "beginning"' });
+
+        const htmlNode = buildHtmlNode(html);
+        newLexical = insertHtmlNode(post.lexical, htmlNode, position);
+
+      } else if (mode === 'gallery') {
         const { imageUrls } = req.body;
 
         if (!Array.isArray(imageUrls) || imageUrls.length < 2)

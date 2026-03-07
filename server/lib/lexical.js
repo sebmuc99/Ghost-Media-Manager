@@ -254,4 +254,27 @@ module.exports = {
   insertImageNode,
   buildGalleryNode,
   insertGalleryNode,
+  buildHtmlNode,
+  insertHtmlNode,
 };
+
+// ── buildHtmlNode ─────────────────────────────────────────────────────────────
+// Build a Ghost Lexical html card node from a raw HTML string.
+function buildHtmlNode(html) {
+  return { type: 'html', version: 1, html };
+}
+
+// ── insertHtmlNode ────────────────────────────────────────────────────────────
+// Insert an html card node into a Lexical JSON string.
+// position: 'end' | 'beginning'
+// Throws if lexicalJson cannot be parsed.
+function insertHtmlNode(lexicalJson, htmlNode, position = 'end') {
+  const doc  = JSON.parse(lexicalJson);
+  const root = doc.root;
+  if (position === 'beginning') {
+    root.children.unshift(htmlNode);
+  } else {
+    root.children.push(htmlNode);
+  }
+  return JSON.stringify(doc);
+}

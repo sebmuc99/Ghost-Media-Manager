@@ -750,8 +750,10 @@ select.sort-select {
           <button class="he-snippet" data-snippet="warning">⚠️ Warning</button>
         </div>
         <div class="he-actions">
+          <button class="btn btn-ghost btn-sm" id="hePickImageBtn">🖼 Insert Image</button>
           <button class="btn btn-ghost btn-sm" id="heClearBtn">Clear</button>
           <button class="btn btn-ghost btn-sm" id="heCopyBtn">📋 Copy HTML</button>
+          <button class="btn btn-primary btn-sm" id="heInsertPostBtn">→ Insert into Post</button>
         </div>
       </div>
       <div class="he-split">
@@ -1433,6 +1435,45 @@ select.sort-select {
     <div class="modal-footer">
       <button class="btn btn-ghost" id="insertGalleryCancelBtn">Cancel</button>
       <button class="btn btn-primary" id="insertGalleryConfirmBtn">Insert Gallery</button>
+    </div>
+  </div>
+</div>
+
+<!-- HTML Editor — Image Picker overlay -->
+<div class="overlay" id="heImagePickerOverlay">
+  <div class="modal" style="max-width:760px;width:94vw">
+    <div class="modal-title">🖼 Pick an Image</div>
+    <div class="field-group">
+      <input type="text" class="search-input" id="heImageSearch" placeholder="Search images…" style="width:100%">
+    </div>
+    <div id="heImageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:380px;overflow-y:auto;padding:4px 0"></div>
+    <div id="heImageEmpty" class="empty-state" style="display:none"><span>No images found</span></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="hePickerCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- HTML Editor — Insert into Post overlay -->
+<div class="overlay" id="heInsertOverlay">
+  <div class="modal">
+    <div class="modal-title">📌 Insert HTML into Post</div>
+    <div class="field-group">
+      <label class="field-label">Post or Page</label>
+      <select class="text-input" id="heInsertPostSelect" style="width:100%">
+        <option value="">— select a post —</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Insert position</label>
+      <select class="text-input" id="heInsertPosition" style="width:100%">
+        <option value="end">End of post</option>
+        <option value="beginning">Beginning of post</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="heInsertCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="heInsertConfirmBtn">Insert into Post</button>
     </div>
   </div>
 </div>

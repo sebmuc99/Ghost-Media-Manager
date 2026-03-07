@@ -4032,6 +4032,116 @@ function initHtmlEditorTab() {
     ta.focus();
   });
 
+  // ── Image Picker ──────────────────────────────────────────────────────────────
+  document.getElementById('hePickImageBtn').addEventListener('click', () => {
+    const overlay   = document.getElementById('heImagePickerOverlay');
+    const grid      = document.getElementById('heImageGrid');
+    const emptyMsg  = document.getElementById('heImageEmpty');
+    const searchEl  = document.getElementById('heImageSearch');
+
+    const render = (images) => {
+      grid.innerHTML = '';
+      const filtered = searchEl.value.trim().toLowerCase()
+        ? images.filter(img => (img.filename || img.url).toLowerCase().includes(searchEl.value.trim().toLowerCase()))
+        : images;
+      emptyMsg.style.display = filtered.length === 0 ? 'flex' : 'none';
+      filtered.forEach(img => {
+        const thumb = document.createElement('div');
+        thumb.style.cssText = 'cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:border-color .15s';
+        thumb.addEventListener('mouseenter', () => thumb.style.borderColor = 'var(--accent)');
+        thumb.addEventListener('mouseleave', () => thumb.style.borderColor = 'transparent');
+        const imgEl = document.createElement('img');
+        imgEl.src   = img.url;
+        imgEl.alt   = img.filename || '';
+        imgEl.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;display:block';
+        imgEl.loading = 'lazy';
+        thumb.appendChild(imgEl);
+        thumb.addEventListener('click', () => {
+          const alt  = (img.filename || '').replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+          const tag  = `<img src="${img.url}" alt="${alt}" style="width:100%;border-radius:8px;" loading="lazy" />`;
+          insertAtCursor(tag);
+          overlay.classList.remove('show');
+        });
+        grid.appendChild(thumb);
+      });
+    };
+
+    searchEl.value = '';
+    const images = state.allImages;
+    if (images.length > 0) {
+      render(images);
+    } else {
+      grid.innerHTML = '<div style="color:var(--text-muted);padding:20px">Loading…</div>';
+      loadMedia().then(() => render(state.allImages));
+    }
+
+    searchEl.oninput = () => render(state.allImages);
+    overlay.classList.add('show');
+  });
+
+  document.getElementById('hePickerCancelBtn').addEventListener('click', () => {
+    document.getElementById('heImagePickerOverlay').classList.remove('show');
+  });
+
+  // ── Insert into Post ──────────────────────────────────────────────────────────
+  document.getElementById('heInsertPostBtn').addEventListener('click', () => {
+    if (!ta.value.trim()) { toast('Nothing to insert — editor is empty', 'warning'); return; }
+
+    const sel = document.getElementById('heInsertPostSelect');
+    sel.innerHTML = '<option value="">— select a post —</option>';
+    const fill = (posts) => posts.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value        = p.id;
+      opt.dataset.type = p._type === 'page' ? 'pages' : 'posts';
+      opt.textContent  = `${p._type === 'page' ? '[Page] ' : ''}${p.title || '(untitled)'}`;
+      sel.appendChild(opt);
+    });
+
+    if (state.postsData.length > 0) fill(state.postsData);
+    else loadPosts().then(() => fill(state.postsData));
+
+    document.getElementById('heInsertOverlay').classList.add('show');
+  });
+
+  document.getElementById('heInsertCancelBtn').addEventListener('click', () => {
+    document.getElementById('heInsertOverlay').classList.remove('show');
+  });
+
+  document.getElementById('heInsertConfirmBtn').addEventListener('click', async () => {
+    const sel    = document.getElementById('heInsertPostSelect');
+    const postId = sel.value;
+    if (!postId) { toast('Please select a post.', 'warning'); return; }
+
+    const btn = document.getElementById('heInsertConfirmBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Inserting…';
+
+    try {
+      const postType = sel.selectedOptions[0]?.dataset.type || 'posts';
+      const res = await api('/api/media/insert-into-post', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode:     'html',
+          html:     ta.value,
+          postId,
+          postType,
+          position: document.getElementById('heInsertPosition').value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+
+      toast('HTML card inserted into post ✓', 'success');
+      document.getElementById('heInsertOverlay').classList.remove('show');
+    } catch (e) {
+      toast(`Insert failed: ${e.message}`, 'error');
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Insert into Post';
+    }
+  });
+
   // ── Initial render ───────────────────────────────────────────────────────────────────
   updateLineNumbers();
   updatePreview();
