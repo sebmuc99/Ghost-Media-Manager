@@ -10,13 +10,34 @@
 
 ## Screenshots
 
-| Media Library | Post Management |
-|---|---|
-| ![Media Library](docs/screenshots/media-library.png) | ![Post Management](docs/screenshots/post-management.png) |
+> Click any screenshot to view full size.
 
-| Image Editor | AI Features |
-|---|---|
-| ![Image Editor](docs/screenshots/image-editor.png) | ![AI Features](docs/screenshots/ai-features.png) |
+<table>
+<tr>
+  <td align="center"><a href="image.png"><img src="image.png" width="380" alt="Login Screen" /></a><br/><sub><b>Login Screen</b></sub></td>
+  <td align="center"><a href="image-1.png"><img src="image-1.png" width="380" alt="Media Library" /></a><br/><sub><b>Media Library</b></sub></td>
+</tr>
+<tr>
+  <td align="center"><a href="image-10.png"><img src="image-10.png" width="380" alt="Media Library — 3 selected" /></a><br/><sub><b>Bulk Selection</b></sub></td>
+  <td align="center"><a href="image-2.png"><img src="image-2.png" width="380" alt="Post Management" /></a><br/><sub><b>Post Management</b></sub></td>
+</tr>
+<tr>
+  <td align="center"><a href="image-4.png"><img src="image-4.png" width="380" alt="Image Editor" /></a><br/><sub><b>Image Editor</b></sub></td>
+  <td align="center"><a href="image-3.png"><img src="image-3.png" width="380" alt="Image Editor — annotate" /></a><br/><sub><b>Image Editor — Annotate</b></sub></td>
+</tr>
+<tr>
+  <td align="center"><a href="image-5.png"><img src="image-5.png" width="380" alt="AI: Create post from image" /></a><br/><sub><b>AI — Create Post from Image</b></sub></td>
+  <td align="center"><a href="image-6.png"><img src="image-6.png" width="380" alt="AI: Improve Post" /></a><br/><sub><b>AI — Improve Post</b></sub></td>
+</tr>
+<tr>
+  <td align="center"><a href="image-7.png"><img src="image-7.png" width="380" alt="Immich Gallery" /></a><br/><sub><b>Immich Gallery</b></sub></td>
+  <td align="center"><a href="image-8.png"><img src="image-8.png" width="380" alt="Immich — Use in Ghost" /></a><br/><sub><b>Immich — Use in Ghost</b></sub></td>
+</tr>
+<tr>
+  <td align="center"><a href="image-9.png"><img src="image-9.png" width="380" alt="Settings" /></a><br/><sub><b>Settings</b></sub></td>
+  <td></td>
+</tr>
+</table>
 
 ---
 
