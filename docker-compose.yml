@@ -7,7 +7,6 @@ services:
       - "3334:3334"
     environment:
       - GHOST_URL=https://your-ghost.com
-      - GHOST_ADMIN_API_KEY=your-id:your-secret
       # Required when accessed via a reverse proxy / public domain:
       # - PUBLIC_URL=https://your-ghost-manager.example.com
       # Optional: AI features
