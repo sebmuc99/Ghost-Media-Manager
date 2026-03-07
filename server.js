@@ -97,6 +97,7 @@ app.use(helmet({
   originAgentCluster: false,
 }));
 const allowedOrigins = [
+  process.env.PUBLIC_URL,       // app's own public URL when behind a reverse proxy
   process.env.GHOST_URL,
   process.env.IMMICH_URL,
   `http://localhost:${PORT}`,
@@ -105,7 +106,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow requests with no origin (same-origin, curl, Portainer)
+    // Allow requests with no origin (same-origin, curl, Portainer health checks)
     if (!origin) return cb(null, true);
     if (allowedOrigins.some(o => origin.startsWith(o))) return cb(null, true);
     cb(new Error('CORS: origin not allowed'));
