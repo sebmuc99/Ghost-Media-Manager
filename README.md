@@ -8,7 +8,17 @@
 [![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/sebmuc99/Ghost-Media-Manager/pkgs/container/ghost-media-manager)
 [![Node.js](https://img.shields.io/badge/Node.js-20-green?logo=node.js)](https://nodejs.org)
 
-<!-- Screenshot placeholder — replace with actual screenshot after first deploy -->
+## Screenshots
+
+| Media Library | Post Management |
+|---|---|
+| ![Media Library](docs/screenshots/media-library.png) | ![Post Management](docs/screenshots/post-management.png) |
+
+| Image Editor | AI Features |
+|---|---|
+| ![Image Editor](docs/screenshots/image-editor.png) | ![AI Features](docs/screenshots/ai-features.png) |
+
+---
 
 Ghost has no built-in media library. **Ghost Media Manager** fills this gap
 with a self-hosted web app that gives you full control over all Ghost media
@@ -63,23 +73,29 @@ services:
       - "3334:3334"
     environment:
       - GHOST_URL=https://your-ghost.com
-      - GHOST_ADMIN_API_KEY=your-id:your-secret
+      # Required when accessed via a reverse proxy / public domain:
+      # - PUBLIC_URL=https://your-ghost-manager.example.com
+      # Optional: AI features
+      # - ANTHROPIC_API_KEY=sk-ant-...
+      # Optional: Immich integration
+      # - IMMICH_URL=https://your-immich.com
+      # - IMMICH_API_KEY=your-immich-key
+      # Optional: filesystem paths (add when mounting volumes below)
+      # - GHOST_MEDIA_PATH=/ghost-images
+      # - GHOST_MEDIA_VIDEO_PATH=/ghost-media
+      # - GHOST_MEDIA_FILES_PATH=/ghost-files
     # Optional: mount Ghost content directories for full functionality
     # volumes:
     #   - /path/to/ghost/content/images:/ghost-images
     #   - /path/to/ghost/content/media:/ghost-media
     #   - /path/to/ghost/content/files:/ghost-files
-    # environment:
-    #   - GHOST_MEDIA_PATH=/ghost-images
-    #   - GHOST_MEDIA_VIDEO_PATH=/ghost-media
-    #   - GHOST_MEDIA_FILES_PATH=/ghost-files
 ```
 
 ```bash
 docker compose up -d
 ```
 
-Open **http://your-server:3334** and enter your Ghost Admin API key.
+Open **http://your-server:3334**, enter your Ghost URL and Admin API key in the login screen.
 
 ### Portainer
 
@@ -98,7 +114,6 @@ docker run -d \
   --name ghost-media-manager \
   -p 3334:3334 \
   -e GHOST_URL=https://your-ghost.com \
-  -e GHOST_ADMIN_API_KEY=your-id:your-secret \
   --restart unless-stopped \
   ghcr.io/sebmuc99/ghost-media-manager:latest
 ```
@@ -124,7 +139,8 @@ See [CONFIGURATION.md](CONFIGURATION.md) for the full reference.
 | Variable | Description |
 |----------|-------------|
 | `GHOST_URL` | Your Ghost instance URL (no trailing slash) |
-| `GHOST_ADMIN_API_KEY` | Ghost Admin API key (`id:secret`) |
+
+> **Authentication:** The Ghost Admin API key is entered in the browser login screen — not configured as an environment variable. See [Getting your Ghost Admin API Key](#getting-your-ghost-admin-api-key) below.
 
 ### Filesystem Access (optional, recommended)
 
