@@ -124,10 +124,11 @@ function setupListeners() {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-      if (btn.dataset.tab === 'immich') initImmichTab();
-      if (btn.dataset.tab === 'posts')  initPostsTab();
-      if (btn.dataset.tab === 'videos') initVideosTab();
-      if (btn.dataset.tab === 'files')  initFilesTab();
+      if (btn.dataset.tab === 'immich')      initImmichTab();
+      if (btn.dataset.tab === 'posts')       initPostsTab();
+      if (btn.dataset.tab === 'videos')      initVideosTab();
+      if (btn.dataset.tab === 'files')       initFilesTab();
+      if (btn.dataset.tab === 'html-editor') initHtmlEditorTab();
     });
   });
 
@@ -3831,4 +3832,208 @@ async function insertGallery() {
     btn.disabled    = false;
     btn.textContent = 'Insert Gallery';
   }
+}
+
+// ── HTML Live Editor ───────────────────────────────────────────────────────────────────────────
+function initHtmlEditorTab() {
+  const ta          = document.getElementById('heTextarea');
+  const lineNums    = document.getElementById('heLineNums');
+  const frame       = document.getElementById('hePreview');
+  const statusPos   = document.getElementById('heStatusPos');
+  const statusChars = document.getElementById('heStatusChars');
+  const statusValid = document.getElementById('heStatusValid');
+
+  if (ta._heInit) return; // already wired
+  ta._heInit = true;
+
+  // ── Snippet templates ───────────────────────────────────────────────────────────────────
+  const SNIPPETS = {
+    'two-col':
+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;font-family:Georgia,serif">
+  <div>
+    <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:12px">Heading</h2>
+    <p style="color:#374151;line-height:1.7">Your first column text goes here.</p>
+  </div>
+  <div>
+    <img src="" alt="Image" style="width:100%;border-radius:8px;object-fit:cover" />
+  </div>
+</div>`,
+
+    'img-left':
+`<div style="display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start;font-family:Georgia,serif">
+  <div>
+    <img src="" alt="Portrait" style="width:100%;border-radius:8px;object-fit:cover" />
+  </div>
+  <div>
+    <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:12px">Heading</h2>
+    <p style="color:#374151;line-height:1.7">Your content alongside the image.</p>
+  </div>
+</div>`,
+
+    'img-right':
+`<div style="display:grid;grid-template-columns:1fr 240px;gap:24px;align-items:start;font-family:Georgia,serif">
+  <div>
+    <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:12px">Heading</h2>
+    <p style="color:#374151;line-height:1.7">Your content alongside the image.</p>
+  </div>
+  <div>
+    <img src="" alt="Portrait" style="width:100%;border-radius:8px;object-fit:cover" />
+  </div>
+</div>`,
+
+    'callout':
+`<div style="border-left:4px solid #22c55e;background:#f0fdf4;border-radius:6px;padding:16px 20px;font-family:Georgia,serif">
+  <p style="margin:0;font-weight:600;color:#166534;margin-bottom:6px">ℹ️ Note</p>
+  <p style="margin:0;color:#15803d;line-height:1.6">Your callout message goes here.</p>
+</div>`,
+
+    'table':
+`<table style="width:100%;border-collapse:collapse;font-family:Georgia,serif;font-size:14px">
+  <thead>
+    <tr style="background:#f3f4f6">
+      <th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600">Column 1</th>
+      <th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600">Column 2</th>
+      <th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600">Column 3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 1, A</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 1, B</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 1, C</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 2, A</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 2, B</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 2, C</td>
+    </tr>
+  </tbody>
+</table>`,
+
+    'badge':
+`<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;font-family:-apple-system,sans-serif">BC 2024 Wave 2</span>`,
+
+    'tip':
+`<div style="border-left:4px solid #f59e0b;background:#fffbeb;border-radius:6px;padding:16px 20px;font-family:Georgia,serif">
+  <p style="margin:0;font-weight:600;color:#92400e;margin-bottom:6px">💡 Tip</p>
+  <p style="margin:0;color:#92400e;line-height:1.6">Your tip text goes here.</p>
+</div>`,
+
+    'warning':
+`<div style="border-left:4px solid #ef4444;background:#fef2f2;border-radius:6px;padding:16px 20px;font-family:Georgia,serif">
+  <p style="margin:0;font-weight:600;color:#991b1b;margin-bottom:6px">⚠️ Warning</p>
+  <p style="margin:0;color:#991b1b;line-height:1.6">Your warning message goes here.</p>
+</div>`,
+  };
+
+  // ── Preview wrappers ───────────────────────────────────────────────────────────────────
+  const PREVIEW_WRAP = {
+    raw:   html => `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:16px;font-family:-apple-system,sans-serif;line-height:1.6}</style></head><body>${html}</body></html>`,
+    ghost: html => `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#fff;font-family:Georgia,serif;color:#1f2937;line-height:1.75}.gh{max-width:720px;margin:32px auto;padding:0 24px}</style></head><body><div class="gh">${html}</div></body></html>`,
+    dark:  html => `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#111827;color:#f3f4f6;font-family:Georgia,serif;line-height:1.75}.gh{max-width:720px;margin:32px auto;padding:0 24px}</style></head><body><div class="gh">${html}</div></body></html>`,
+  };
+
+  let currentMode = 'raw';
+
+  // ── Helpers ────────────────────────────────────────────────────────────────────────────────
+  function updateLineNumbers() {
+    const count = ta.value.split('\n').length;
+    lineNums.textContent = Array.from({ length: count }, (_, i) => i + 1).join('\n');
+  }
+
+  function updatePreview() {
+    frame.srcdoc = PREVIEW_WRAP[currentMode](ta.value);
+  }
+
+  function updateStatus() {
+    const val   = ta.value;
+    const lines = val.substring(0, ta.selectionStart).split('\n');
+    statusPos.textContent   = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+    statusChars.textContent = `${val.length} chars`;
+    if (!val.trim()) {
+      statusValid.textContent = '';
+    } else {
+      const open  = (val.match(/</g)  || []).length;
+      const close = (val.match(/>/g)  || []).length;
+      if (open !== close) {
+        statusValid.textContent  = '⚠ unclosed tag?';
+        statusValid.style.color  = 'var(--warning)';
+      } else {
+        statusValid.textContent  = '✓ ready';
+        statusValid.style.color  = 'var(--success)';
+      }
+    }
+  }
+
+  function insertAtCursor(text) {
+    const start  = ta.selectionStart;
+    const before = ta.value.substring(0, start);
+    const after  = ta.value.substring(ta.selectionEnd);
+    const insert = (before && !before.endsWith('\n')) ? '\n' + text : text;
+    ta.value = before + insert + after;
+    ta.selectionStart = ta.selectionEnd = start + insert.length;
+    ta.focus();
+    updateLineNumbers();
+    updatePreview();
+    updateStatus();
+  }
+
+  // ── Events ───────────────────────────────────────────────────────────────────────────────
+  ta.addEventListener('input',  () => { updateLineNumbers(); updatePreview(); updateStatus(); });
+  ta.addEventListener('click',  updateStatus);
+  ta.addEventListener('keyup',  updateStatus);
+  ta.addEventListener('scroll', () => { lineNums.scrollTop = ta.scrollTop; });
+
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const start = ta.selectionStart;
+    ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(ta.selectionEnd);
+    ta.selectionStart = ta.selectionEnd = start + 2;
+    updateLineNumbers();
+    updatePreview();
+    updateStatus();
+  });
+
+  document.querySelectorAll('.he-snippet').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = SNIPPETS[btn.dataset.snippet];
+      if (s) insertAtCursor(s);
+    });
+  });
+
+  document.querySelectorAll('.he-mode').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.he-mode').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMode = btn.dataset.mode;
+      updatePreview();
+    });
+  });
+
+  document.getElementById('heCopyBtn').addEventListener('click', async () => {
+    const html = ta.value;
+    if (!html.trim()) { toast('Nothing to copy', 'warning'); return; }
+    try {
+      await navigator.clipboard.writeText(html);
+      toast('HTML copied to clipboard ✓', 'success');
+    } catch {
+      toast('Copy failed — use Ctrl+A then Ctrl+C', 'error');
+    }
+  });
+
+  document.getElementById('heClearBtn').addEventListener('click', () => {
+    if (!ta.value.trim()) return;
+    if (!confirm('Clear the editor? This cannot be undone.')) return;
+    ta.value = '';
+    updateLineNumbers();
+    updatePreview();
+    updateStatus();
+    ta.focus();
+  });
+
+  // ── Initial render ───────────────────────────────────────────────────────────────────
+  updateLineNumbers();
+  updatePreview();
+  updateStatus();
 }
