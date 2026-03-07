@@ -2,6 +2,12 @@
 
 > The missing media library for Ghost CMS
 
+[![Build](https://github.com/sebmuc99/Ghost-Media-Manager/actions/workflows/docker-build.yml/badge.svg)](https://github.com/sebmuc99/Ghost-Media-Manager/actions/workflows/docker-build.yml)
+[![Lint](https://github.com/sebmuc99/Ghost-Media-Manager/actions/workflows/lint.yml/badge.svg)](https://github.com/sebmuc99/Ghost-Media-Manager/actions/workflows/lint.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/sebmuc99/Ghost-Media-Manager/pkgs/container/ghost-media-manager)
+[![Node.js](https://img.shields.io/badge/Node.js-20-green?logo=node.js)](https://nodejs.org)
+
 <!-- Screenshot placeholder — replace with actual screenshot after first deploy -->
 
 Ghost has no built-in media library. **Ghost Media Manager** fills this gap
