@@ -45,6 +45,9 @@ async function walkContentDir(rootDir, urlPrefix, opts = {}) {
     catch { return; } // directory unreadable — skip silently
 
     for (const entry of entries) {
+      // Skip Synology system entries (@eaDir, @tmp, @SynoEAStream, etc.) and hidden files
+      if (entry.name.startsWith('@') || entry.name.startsWith('.')) continue;
+
       const rel = base ? `${base}/${entry.name}` : entry.name;
 
       if (entry.isDirectory()) {
