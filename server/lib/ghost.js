@@ -6,7 +6,6 @@
  * GHOST_URL is always read from process.env internally.
  */
 
-const fetch    = require('node-fetch');
 const FormData = require('form-data');
 const jwt      = require('jsonwebtoken');
 
