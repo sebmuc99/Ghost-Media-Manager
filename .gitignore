@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Environment (contains secrets)
+.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.code-workspace
+
+# Internal docs (not for public repo)
+internal/

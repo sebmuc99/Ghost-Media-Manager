@@ -1,0 +1,30 @@
+services:
+  ghost-media-manager:
+    image: ghcr.io/sebmuc99/ghost-media-manager:latest
+    container_name: ghost-media-manager
+    restart: unless-stopped
+    ports:
+      - "3334:3334"
+    environment:
+      - GHOST_URL=https://your-ghost.com
+      - GHOST_ADMIN_API_KEY=your-id:your-secret
+      # Optional: AI features
+      # - ANTHROPIC_API_KEY=sk-ant-...
+      # Optional: Immich integration
+      # - IMMICH_URL=https://your-immich.com
+      # - IMMICH_API_KEY=your-immich-key
+    # Optional: mount Ghost content directories for full functionality
+    # volumes:
+    #   - /path/to/ghost/content/images:/ghost-images
+    #   - /path/to/ghost/content/media:/ghost-media
+    #   - /path/to/ghost/content/files:/ghost-files
+    # environment:
+    #   - GHOST_MEDIA_PATH=/ghost-images
+    #   - GHOST_MEDIA_VIDEO_PATH=/ghost-media
+    #   - GHOST_MEDIA_FILES_PATH=/ghost-files
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3334/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

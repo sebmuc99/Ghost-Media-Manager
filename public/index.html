@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ghost Media Manager</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👻</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+<style>
+/* ── Image Editor overlay ── */
+#editorOverlay {
+  z-index: 2000; align-items: stretch; justify-content: stretch;
+  background: #1a1a22; backdrop-filter: none; padding: 0;
+}
+#editorMount { width: 100%; height: 100%; position: relative; }
+
+/* ── Editor save dialog ── */
+#editorSaveOverlay { z-index: 2001; }
+.editor-save-options { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+.editor-save-opt {
+  border: 2px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; cursor: pointer; transition: border-color var(--transition), background var(--transition);
+}
+.editor-save-opt:hover { border-color: var(--accent); background: rgba(108,99,255,.06); }
+.editor-save-opt.selected { border-color: var(--accent); background: rgba(108,99,255,.1); }
+.editor-save-opt-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.editor-save-opt-desc  { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.editor-save-new-form  { margin-top: 10px; display: none; }
+#editorSaveUsageInfo   { margin-bottom: 4px; min-height: 20px; }
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a22;
+  --surface2: #23232e;
+  --surface3: #2c2c3a;
+  --border: #35354a;
+  --accent: #6c63ff;
+  --accent-hover: #857dff;
+  --accent-subtle: rgba(108, 99, 255, 0.12);
+  --danger: #e05252;
+  --danger-hover: #f06060;
+  --success: #4caf88;
+  --warning: #f0b429;
+  --text: #e8e8f0;
+  --text-muted: #888899;
+  --text-dim: #55556a;
+  --radius: 8px;
+  --radius-lg: 14px;
+  --shadow: 0 4px 24px rgba(0,0,0,.5);
+  --transition: .18s ease;
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+/* ── Login ── */
+#loginPage { display: flex; align-items: center; justify-content: center; height: 100vh; }
+.login-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 40px 48px;
+  width: min(420px, calc(100vw - 32px)); box-shadow: var(--shadow);
+}
+.login-logo { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.login-logo span { color: var(--accent); }
+.login-subtitle { color: var(--text-muted); margin-bottom: 28px; font-size: 13px; }
+.login-ghost-url { font-size: 12px; color: var(--text-dim); margin-bottom: 20px; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); word-break: break-all; }
+.login-ghost-url strong { color: var(--text-muted); }
+.label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 6px; }
+.login-error { color: var(--danger); font-size: 12px; margin-bottom: 10px; min-height: 18px; }
+
+/* ── Buttons ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 500; cursor: pointer; transition: background var(--transition), transform var(--transition); }
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:disabled { background: var(--surface3); color: var(--text-dim); cursor: not-allowed; transform: none; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: var(--danger-hover); }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--surface2); color: var(--text); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ── Inputs ── */
+.text-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius); padding: 9px 12px;
+  font-size: 13px; outline: none; transition: border-color var(--transition); margin-bottom: 12px;
+}
+.text-input:focus { border-color: var(--accent); }
+.text-input::placeholder { color: var(--text-dim); }
+.field-label { font-size: 12px; color: var(--text-muted); margin-bottom: 5px; display: block; }
+.field-group { margin-bottom: 14px; }
+.field-group .text-input { margin-bottom: 0; }
+
+/* ── App shell ── */
+#app { display: none; flex-direction: column; height: 100vh; }
+#app.show { display: flex; }
+
+header {
+  display: flex; align-items: center; gap: 12px; padding: 0 20px;
+  height: 52px; background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; z-index: 10;
+}
+.header-logo { font-size: 16px; font-weight: 700; }
+.header-logo span { color: var(--accent); }
+.header-site { font-size: 12px; color: var(--text-dim); }
+.header-spacer { flex: 1; }
+.header-nav { display: flex; gap: 4px; }
+.tab-btn {
+  padding: 6px 14px; border: none; background: transparent; color: var(--text-muted);
+  border-radius: var(--radius); font-size: 13px; cursor: pointer; white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+}
+.tab-btn:hover { background: var(--surface2); color: var(--text); }
+.tab-btn.active { background: var(--surface3); color: var(--text); }
+
+.content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.tab-panel { display: none; flex: 1; overflow-y: auto; padding: 20px; flex-direction: column; }
+.tab-panel.active { display: flex; }
+
+/* ── Image selection ── */
+.image-card.selectable { cursor: default; }
+.image-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(108,99,255,.35); }
+.card-select-wrap {
+  position: absolute; top: 7px; left: 7px; z-index: 2;
+  width: 20px; height: 20px;
+}
+.image-thumb-wrap { position: relative; }
+.card-select-wrap input[type=checkbox] {
+  width: 18px; height: 18px; accent-color: var(--accent);
+  cursor: pointer; border-radius: 4px;
+}
+.selection-toolbar {
+  display: none; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--accent);
+  border-radius: var(--radius); padding: 9px 14px;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.selection-count { font-size: 13px; font-weight: 500; color: var(--accent); }
+
+/* ── Create From Images dialog ── */
+.cfig-image-strip {
+  display: flex; gap: 8px; overflow-x: auto;
+  padding: 6px 0 10px; margin-bottom: 4px; scrollbar-width: thin;
+}
+.cfig-preview-thumb {
+  flex: 0 0 80px; height: 60px; border-radius: 6px;
+  object-fit: cover; border: 2px solid var(--border);
+}
+.cfig-cost-warning {
+  background: rgba(230,180,30,.1); border: 1px solid rgba(230,180,30,.4);
+  border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.6;
+}
+.cfig-field-group { display: flex; flex-direction: column; gap: 12px; }
+.cfig-field label {
+  display: block; font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px;
+}
+
+/* ── Toolbar ── */
+.toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.search-input {
+  flex: 1; min-width: 180px; max-width: 360px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius); padding: 8px 12px;
+  font-size: 13px; outline: none; transition: border-color var(--transition);
+}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--text-dim); }
+select.sort-select {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius); padding: 7px 10px;
+  font-size: 13px; cursor: pointer; outline: none;
+}
+.media-count { font-size: 12px; color: var(--text-muted); }
+
+/* ── Upload Zone ── */
+.upload-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius-lg);
+  padding: 28px 20px; text-align: center; margin-bottom: 20px;
+  transition: border-color var(--transition), background var(--transition);
+  cursor: pointer; flex-shrink: 0;
+}
+.upload-zone.drag-over { border-color: var(--accent); background: rgba(108,99,255,.07); }
+.upload-zone p { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+.upload-icon { font-size: 28px; margin-bottom: 4px; }
+#fileInput { display: none; }
+.upload-zone-inline {
+  padding: 5px 12px; margin-bottom: 0; border-width: 1px;
+  font-size: 12px; font-weight: 500; white-space: nowrap;
+  flex-shrink: 0; color: var(--text-muted);
+}
+
+/* ── Upload queue ── */
+.upload-queue { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.upload-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 12px;
+}
+.upload-item-row { display: flex; align-items: center; gap: 10px; }
+.upload-item-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-item-status { font-size: 12px; white-space: nowrap; }
+.upload-item-status.success  { color: var(--success); }
+.upload-item-status.error    { color: var(--danger);  }
+.upload-item-status.uploading{ color: var(--accent);  }
+.progress-bar { height: 3px; background: var(--surface3); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.progress-bar-fill {
+  height: 100%; background: var(--accent); border-radius: 2px;
+  width: 30%; animation: indeterminate 1.2s ease-in-out infinite;
+}
+.progress-bar-fill.done   { animation: none; width: 100%; background: var(--success); }
+.progress-bar-fill.failed { animation: none; width: 100%; background: var(--danger);  }
+@keyframes indeterminate {
+  0%   { transform: translateX(-100%); width: 40%; }
+  50%  { transform: translateX(150%);  width: 40%; }
+  100% { transform: translateX(300%);  width: 40%; }
+}
+
+/* ── Image grid ── */
+.image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.image-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden; cursor: pointer;
+  transition: border-color var(--transition), transform var(--transition);
+  display: flex; flex-direction: column;
+}
+.image-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.image-thumb-wrap { aspect-ratio: 4/3; overflow: hidden; background: var(--surface2); }
+.image-thumb { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
+.image-card:hover .image-thumb { transform: scale(1.04); }
+.image-card-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.image-filename { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.image-meta { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; }
+
+/* ── Usage badge – clickable ── */
+.usage-badge {
+  font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 500;
+  display: inline-block; cursor: pointer; transition: opacity var(--transition);
+}
+.usage-badge:hover { opacity: .75; }
+.usage-badge.used   { background: rgba(76,175,136,.15); color: var(--success); border: 1px solid rgba(76,175,136,.3); }
+.usage-badge.unused { background: rgba(240,180,41,.1);  color: var(--warning); border: 1px solid rgba(240,180,41,.25); cursor: default; }
+
+/* ── Card action buttons ── */
+.card-actions { display: flex; gap: 4px; padding: 0 8px 8px; flex-wrap: wrap; }
+.card-btn {
+  flex: 1; min-width: 56px; padding: 5px 4px; font-size: 11px; font-weight: 500;
+  border: none; border-radius: 5px; cursor: pointer; text-align: center; white-space: nowrap;
+  transition: background var(--transition);
+}
+.card-btn-copy   { background: var(--surface3); color: var(--text-muted); }
+.card-btn-copy:hover   { background: var(--border); color: var(--text); }
+.card-btn-rename { background: rgba(108,99,255,.15); color: var(--accent); }
+.card-btn-rename:hover { background: rgba(108,99,255,.3); }
+.card-btn-delete { background: rgba(224,82,82,.12); color: var(--danger); }
+.card-btn-delete:hover { background: rgba(224,82,82,.25); }
+
+/* ── States ── */
+.loading-state, .empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px 20px; color: var(--text-muted); gap: 10px; text-align: center;
+}
+.spinner { width: 32px; height: 32px; border: 3px solid var(--surface3); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Overlays / Modals ── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; opacity: 0; pointer-events: none;
+  transition: opacity .2s ease; backdrop-filter: blur(4px);
+}
+.overlay.show { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 28px;
+  width: min(560px, calc(100vw - 32px));
+  box-shadow: var(--shadow); max-height: calc(100vh - 60px); overflow-y: auto;
+}
+.modal-wide { width: min(860px, calc(100vw - 32px)); }
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.close-btn {
+  background: var(--surface3); border: none; color: var(--text);
+  width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background var(--transition);
+}
+.close-btn:hover { background: var(--border); }
+
+/* ── Preview overlay ── */
+#previewOverlay .preview-inner {
+  display: flex; gap: 0; max-height: calc(100vh - 60px);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  width: min(900px, calc(100vw - 32px)); box-shadow: var(--shadow);
+}
+.preview-img-wrap {
+  flex: 0 0 auto; width: 55%; background: var(--surface2);
+  display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 300px;
+}
+.preview-img-wrap img { max-width: 100%; max-height: 70vh; object-fit: contain; display: block; }
+.preview-img-wrap video { max-width: 100%; max-height: 70vh; display: block; }
+.preview-meta { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; position: relative; }
+.preview-close-wrap { position: absolute; top: 12px; right: 12px; }
+.preview-filename { font-size: 16px; font-weight: 600; word-break: break-all; padding-right: 40px; }
+.meta-row { display: flex; flex-direction: column; gap: 2px; }
+.meta-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.meta-value { font-size: 13px; word-break: break-all; }
+.meta-url { font-size: 12px; color: var(--accent); word-break: break-all; text-decoration: none; }
+.meta-url:hover { text-decoration: underline; }
+.preview-actions { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+.preview-action-btn { justify-content: flex-start; }
+.usage-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.usage-list li a { color: var(--accent); text-decoration: none; font-size: 13px; }
+.usage-list li a:hover { text-decoration: underline; }
+
+/* ── Rename modal ── */
+.rename-usage { background: var(--surface2); border-radius: var(--radius); padding: 12px; margin: 10px 0; }
+.rename-usage-list { list-style: none; display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.rename-usage-list li { font-size: 12px; color: var(--text-muted); }
+.rename-usage-list li a { color: var(--accent); }
+
+/* ── Duplicate warning ── */
+.dup-warning {
+  background: rgba(240,180,41,.08); border: 1px solid rgba(240,180,41,.3);
+  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px;
+  font-size: 12px; color: var(--warning);
+}
+.dup-img { margin-top: 8px; max-height: 80px; border-radius: 4px; border: 1px solid var(--border); display: block; }
+
+/* ── Settings ── */
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 900px; }
+.settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+.settings-card-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+.settings-info { font-size: 12px; color: var(--text-muted); padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); word-break: break-all; margin-bottom: 10px; }
+
+/* ── Immich ── */
+.album-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 16px; }
+.album-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; transition: border-color var(--transition), transform var(--transition); }
+.album-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.album-cover { width: 100%; aspect-ratio: 3/2; object-fit: cover; background: var(--surface2); display: block; }
+.album-cover-placeholder { width: 100%; aspect-ratio: 3/2; display: flex; align-items: center; justify-content: center; background: var(--surface2); font-size: 32px; }
+.album-info { padding: 10px 12px; }
+.album-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.album-count { font-size: 11px; color: var(--text-muted); }
+.immich-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.immich-photo { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: border-color var(--transition); }
+.immich-photo:hover { border-color: var(--accent); }
+.immich-photo img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.immich-photo-info { padding: 5px 8px; font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Usage Posts Popup ── */
+#usagePopup .modal { max-width: 400px; }
+.usage-popup-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.usage-popup-list li a { color: var(--accent); text-decoration: none; font-size: 13px; }
+.usage-popup-list li a:hover { text-decoration: underline; }
+
+/* ── Toast ── */
+#toastContainer {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 16px; font-size: 13px;
+  box-shadow: var(--shadow); max-width: 360px; pointer-events: all;
+  display: flex; align-items: center; gap: 8px;
+  animation: toastIn .25s ease forwards;
+}
+.toast.success { border-left: 3px solid var(--success); }
+.toast.error   { border-left: 3px solid var(--danger);  }
+.toast.info    { border-left: 3px solid var(--accent);  }
+.toast.warning { border-left: 3px solid var(--warning); }
+.toast.fade-out { animation: toastOut .25s ease forwards; }
+@keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0);   } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0);   } to { opacity: 0; transform: translateY(12px); } }
+
+/* ── Posts tab ── */
+.posts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.posts-table thead { position: sticky; top: 0; z-index: 2; }
+.posts-th {
+  text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+  background: var(--surface);
+}
+.posts-td { padding: 10px 12px; border-bottom: 1px solid var(--surface3); vertical-align: top; }
+.posts-tr:hover .posts-td { background: var(--surface2); }
+.post-title-link { color: var(--text); text-decoration: none; font-weight: 500; }
+.post-title-link:hover { color: var(--accent); }
+.post-status {
+  display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 20px; text-transform: uppercase; letter-spacing: .04em;
+}
+.post-status.published { background: rgba(76,175,136,.15); color: var(--success); border: 1px solid rgba(76,175,136,.3); }
+.post-status.draft     { background: rgba(240,180,41,.1);  color: var(--warning); border: 1px solid rgba(240,180,41,.25); }
+.post-status.scheduled { background: rgba(108,99,255,.12); color: var(--accent);  border: 1px solid rgba(108,99,255,.3); }
+.post-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.post-tag {
+  font-size: 10px; padding: 2px 7px; border-radius: 20px;
+  background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border);
+}
+.post-excerpt { font-size: 12px; color: var(--text-muted); max-width: 260px; }
+.post-excerpt.missing { color: var(--text-dim); font-style: italic; }
+.post-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.btn-ai {
+  background: linear-gradient(135deg, rgba(108,99,255,.25), rgba(76,175,136,.2));
+  color: var(--accent); border: 1px solid rgba(108,99,255,.4);
+  padding: 7px 13px; border-radius: var(--radius); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: background var(--transition), opacity var(--transition);
+  white-space: nowrap;
+}
+.btn-ai:hover:not(:disabled) { background: linear-gradient(135deg, rgba(108,99,255,.4), rgba(76,175,136,.3)); }
+.btn-ai:disabled { opacity: .4; cursor: not-allowed; }
+.btn-ai-create {
+  background: linear-gradient(135deg, rgba(108,99,255,.3), rgba(76,175,136,.25));
+  color: var(--accent); border: 1px solid rgba(108,99,255,.5);
+  padding: 7px 14px; border-radius: var(--radius); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background var(--transition), opacity var(--transition);
+  white-space: nowrap; position: relative;
+}
+.btn-ai-create:hover { background: linear-gradient(135deg, rgba(108,99,255,.5), rgba(76,175,136,.4)); }
+.ai-media-badge {
+  background: var(--accent); color: #fff; border-radius: 10px;
+  font-size: 10px; font-weight: 700; padding: 1px 5px;
+  position: absolute; top: -4px; right: -6px;
+}
+.btn-secondary {
+  background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border);
+  padding: 7px 13px; border-radius: var(--radius); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: background var(--transition);
+}
+.btn-secondary:hover { background: var(--border); color: var(--text); }
+.post-row-btn {
+  font-size: 11px; padding: 4px 9px; border: none; border-radius: 5px;
+  cursor: pointer; font-weight: 500; white-space: nowrap;
+  transition: background var(--transition), opacity var(--transition);
+}
+.post-row-btn:disabled { opacity: .4; cursor: not-allowed; }
+.post-row-btn-excerpt { background: rgba(108,99,255,.15); color: var(--accent); }
+.post-row-btn-excerpt:hover:not(:disabled) { background: rgba(108,99,255,.3); }
+.post-row-btn-improve { background: rgba(76,175,136,.12); color: var(--success); }
+.post-row-btn-improve:hover:not(:disabled) { background: rgba(76,175,136,.25); }
+.post-row-btn-open { background: var(--surface3); color: var(--text-muted); }
+.post-row-btn-open:hover { background: var(--border); color: var(--text); }
+
+.improve-field { margin-bottom: 14px; }
+.improve-field-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.improve-field-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.improve-badge-new  { font-size: 10px; padding: 1px 7px; border-radius: 20px; background: rgba(76,175,136,.15); color: var(--success); border: 1px solid rgba(76,175,136,.3); }
+.improve-badge-same { font-size: 10px; padding: 1px 7px; border-radius: 20px; background: var(--surface3); color: var(--text-dim); border: 1px solid var(--border); }
+.improve-current { font-size: 12px; color: var(--text-dim); background: var(--surface2); border-radius: var(--radius); padding: 6px 9px; margin-bottom: 4px; word-break: break-word; }
+.improve-new     { font-size: 13px; color: var(--text); background: var(--surface3); border: 1px solid rgba(76,175,136,.35); border-radius: var(--radius); padding: 6px 9px; word-break: break-word; }
+.improve-apply-row { display: flex; align-items: center; gap: 7px; margin-top: 5px; }
+.improve-apply-row input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+.improve-apply-row label { font-size: 12px; color: var(--text-muted); cursor: pointer; }
+.improve-feedback { background: rgba(108,99,255,.08); border: 1px solid rgba(108,99,255,.25); border-radius: var(--radius); padding: 10px 12px; font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 14px; }
+.improve-check-label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.improve-check-label input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+.improve-tag-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.improve-tag-add    { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 20px; background: rgba(76,175,136,.15); color: var(--success); border: 1px solid rgba(76,175,136,.3); }
+.improve-tag-remove { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 20px; background: rgba(235,77,75,.12); color: #e56060; border: 1px solid rgba(235,77,75,.3); }
+.improve-body-feedback { background: rgba(99,179,237,.08); border: 1px solid rgba(99,179,237,.3); border-radius: var(--radius); padding: 10px 12px; font-size: 13px; color: var(--text); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+
+/* ── Videos tab ── */
+.video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.video-thumb-wrap {
+  aspect-ratio: 16/9; overflow: hidden; background: var(--surface2);
+  position: relative; display: flex; align-items: center; justify-content: center;
+}
+.video-play-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.35); opacity: 0; transition: opacity .2s;
+}
+.image-card:hover .video-play-overlay { opacity: 1; }
+.video-play-icon { font-size: 36px; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+.video-no-thumb {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 40px; color: var(--text-dim);
+}
+/* Video preview modal */
+.video-preview-inner {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 24px; width: min(720px, calc(100vw - 32px)); box-shadow: var(--shadow);
+  max-height: calc(100vh - 60px); overflow-y: auto;
+}
+.video-preview-player {
+  width: 100%; border-radius: var(--radius); background: #000;
+  outline: none; max-height: 400px;
+}
+.video-preview-title { font-size: 15px; font-weight: 600; margin: 12px 0 4px; word-break: break-all; }
+.video-preview-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+.video-preview-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Files tab (card grid, mirrors image grid) ── */
+.file-thumb-wrap {
+  aspect-ratio: 4/3; overflow: hidden; background: var(--surface2);
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+}
+.file-thumb-icon { font-size: 44px; line-height: 1; }
+.file-ext-badge {
+  display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 7px;
+  border-radius: 4px; text-transform: uppercase; letter-spacing: .06em;
+  background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border);
+}
+.card-btn-dl     { background: rgba(76,175,136,.12); color: var(--success); }
+.card-btn-dl:hover { background: rgba(76,175,136,.25); }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .header-nav .tab-btn { padding: 6px 9px; font-size: 12px; }
+  header { padding: 0 12px; }
+  .tab-panel { padding: 12px; }
+  .image-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .video-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  #previewOverlay .preview-inner { flex-direction: column; }
+  .preview-img-wrap { width: 100%; }
+  .login-box { padding: 28px 24px; }
+  .modal { padding: 20px; }
+}
+</style>
+</head>
+<body>
+
+<div id="toastContainer"></div>
+
+<!-- ── Login ── -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="login-logo">Ghost <span>Media</span> Manager</div>
+    <div class="login-subtitle">Enter your Ghost Admin API Key to continue</div>
+
+    <div id="loginGhostUrl" class="login-ghost-url" style="display:none">
+      <strong>Connecting to:</strong> <span id="loginGhostUrlText"></span>
+    </div>
+
+    <label class="label" for="inputApiKey">Ghost Admin API Key</label>
+    <input type="password" id="inputApiKey" class="text-input" placeholder="id:secret" autocomplete="new-password">
+
+    <div class="login-error" id="loginError"></div>
+    <button class="btn btn-primary btn-full" id="connectBtn">Connect</button>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div id="app">
+  <header>
+    <span class="header-logo">Ghost <span>Media</span></span>
+    <span class="header-site" id="headerSite"></span>
+    <div class="header-spacer"></div>
+    <button class="btn-ai-create" id="createAiPostBtn">✨ Create AI Draft Post<span class="ai-media-badge" id="aiMediaBadge" style="display:none"></span></button>
+    <nav class="header-nav">
+      <button class="tab-btn active" data-tab="media">🖼 Media</button>
+      <button class="tab-btn" data-tab="videos" id="tabBtnVideos">🎬 Videos</button>
+      <button class="tab-btn" data-tab="files"  id="tabBtnFiles">📁 Files</button>
+      <button class="tab-btn" data-tab="posts">📄 Posts</button>
+      <button class="tab-btn" data-tab="immich">📷 Immich</button>
+      <button class="tab-btn" data-tab="settings">⚙ Settings</button>
+    </nav>
+    <button class="btn btn-ghost btn-sm" id="logoutBtn" style="margin-left:8px">Logout</button>
+  </header>
+
+  <div class="content">
+
+    <!-- ── Media tab ── -->
+    <div class="tab-panel active" id="tab-media">
+      <div class="toolbar">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search by filename…">
+        <select class="sort-select" id="sortSelect">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="filename">Filename A→Z</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" id="refreshBtn">↺ Refresh</button>
+        <span class="media-count" id="mediaCount"></span>
+        <div class="upload-zone upload-zone-inline" id="uploadZone">⬆ Drop or click to upload<input type="file" id="fileInput" multiple accept="image/*" style="display:none"></div>
+      </div>
+      <div class="upload-queue" id="uploadQueue"></div>
+
+      <div class="selection-toolbar" id="selectionToolbar">
+        <span class="selection-count" id="selectionCount">0 selected</span>
+        <button class="btn btn-primary btn-sm" id="selectionInsertBtn" style="display:none" disabled>📌 Insert into Post</button>
+        <button class="btn btn-primary btn-sm" id="selectionGalleryBtn" style="display:none">🖼️ Insert as Gallery</button>
+        <button class="btn btn-danger btn-sm" id="selectionDeleteBtn" disabled>🗑 Delete 0 selected</button>
+        <button class="btn btn-ghost btn-sm" id="selectionClearBtn">✕ Clear</button>
+      </div>
+
+      <div id="fsMountBanner" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 16px;margin-bottom:12px;color:#856404;font-size:14px;">
+        ⚠️ Media filesystem not mounted — file browsing unavailable. Set <code>GHOST_MEDIA_PATH</code> to your Ghost content/images folder to enable it. Import and other features still work normally.
+      </div>
+      <div id="mediaGrid" class="image-grid"></div>
+      <div id="mediaLoading" class="loading-state"><div class="spinner"></div><span>Loading media…</span></div>
+      <div id="mediaEmpty" class="empty-state" style="display:none"><span style="font-size:32px">🖼</span><span>No images found</span></div>
+    </div>
+
+    <!-- ── Videos tab ── -->
+    <div class="tab-panel" id="tab-videos">
+      <div id="videoFsMountBanner" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 16px;margin-bottom:12px;color:#856404;font-size:14px;">
+        ⚠️ Video filesystem not mounted — set <code>GHOST_MEDIA_VIDEO_PATH</code> to your Ghost <code>content/media</code> folder.
+      </div>
+      <div class="toolbar">
+        <input type="text" class="search-input" id="videoSearchInput" placeholder="Search by filename…">
+        <select class="sort-select" id="videoSortSelect">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="filename">Filename A→Z</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" id="videoRefreshBtn">↺ Refresh</button>
+        <span class="media-count" id="videoCount"></span>
+        <div class="upload-zone upload-zone-inline" id="videoUploadZone">⬆ Drop or click to upload<input type="file" id="videoFileInput" multiple accept=".mp4,.mov,.webm,.ogv,.m4v,.mp3,.wav,.ogg,.m4a,.flac" style="display:none"></div>
+      </div>
+      <div class="upload-queue" id="videoUploadQueue"></div>
+      <div class="selection-toolbar" id="videoSelectionToolbar">
+        <span class="selection-count" id="videoSelectionCount">No videos selected</span>
+        <button class="btn btn-danger btn-sm" id="videoSelectionDeleteBtn" disabled>🗑 Delete 0 selected</button>
+        <button class="btn btn-ghost btn-sm" id="videoSelectionClearBtn">✕ Clear</button>
+      </div>
+      <div id="videoGrid" class="video-grid"></div>
+      <div id="videoLoading" class="loading-state"><div class="spinner"></div><span>Loading videos…</span></div>
+      <div id="videoEmpty" class="empty-state" style="display:none"><span style="font-size:32px">🎬</span><span>No videos found</span></div>
+    </div>
+
+    <!-- ── Files tab ── -->
+    <div class="tab-panel" id="tab-files">
+      <div id="filesFsMountBanner" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 16px;margin-bottom:12px;color:#856404;font-size:14px;">
+        ⚠️ Files filesystem not mounted — set <code>GHOST_MEDIA_FILES_PATH</code> to your Ghost <code>content/files</code> folder.
+      </div>
+      <div class="toolbar">
+        <input type="text" class="search-input" id="filesSearchInput" placeholder="Search by filename…">
+        <select class="sort-select" id="filesSortSelect">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="filename">Filename A→Z</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" id="filesRefreshBtn">↺ Refresh</button>
+        <span class="media-count" id="filesCount"></span>
+        <div class="upload-zone upload-zone-inline" id="fileUploadZone">⬆ Drop or click to upload<input type="file" id="fileFileInput" multiple accept=".pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt,.zip,.rar,.7z,.csv,.json,.txt,.md" style="display:none"></div>
+      </div>
+      <div class="upload-queue" id="fileUploadQueue"></div>
+      <div class="selection-toolbar" id="filesSelectionToolbar">
+        <span class="selection-count" id="filesSelectionCount">No files selected</span>
+        <button class="btn btn-danger btn-sm" id="filesSelectionDeleteBtn" disabled>🗑 Delete 0 selected</button>
+        <button class="btn btn-ghost btn-sm" id="filesSelectionClearBtn">✕ Clear</button>
+      </div>
+      <div id="filesState" class="loading-state" style="display:none"><div class="spinner"></div><span>Loading files…</span></div>
+      <div id="filesEmpty" class="empty-state" style="display:none"><span style="font-size:32px">📁</span><span>No files found</span></div>
+      <div id="filesGrid" class="image-grid"></div>
+    </div>
+
+    <!-- ── Immich tab ── -->
+    <div class="tab-panel" id="tab-immich">
+      <div id="immichNotConfigured" class="empty-state">
+        <span style="font-size:32px">📷</span>
+        <strong>Immich not configured</strong>
+        <p>Go to Settings and enter your Immich URL and API key.</p>
+      </div>
+      <div id="immichContent" style="display:none;flex-direction:column;flex:1">
+        <div class="toolbar">
+          <input type="text" class="search-input" id="immichSearch" placeholder="Search albums or photos…">
+          <button class="btn btn-ghost btn-sm" id="immichRefreshBtn">↺ Refresh</button>
+        </div>
+        <div id="immichAlbumsView">
+          <div id="albumGrid" class="album-grid"></div>
+          <div id="albumLoading" class="loading-state" style="display:none"><div class="spinner"></div><span>Loading albums…</span></div>
+          <div id="albumEmpty"   class="empty-state"   style="display:none"><span>No albums found</span></div>
+        </div>
+        <div id="immichPhotosView" style="display:none;flex-direction:column;flex:1">
+          <button class="btn btn-ghost btn-sm" id="backToAlbumsBtn" style="margin-bottom:16px;align-self:flex-start">← Back to Albums</button>
+          <div id="photoGrid" class="immich-photo-grid"></div>
+          <div id="photoLoading" class="loading-state" style="display:none"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Settings tab ── -->
+    <div class="tab-panel" id="tab-settings">
+      <div style="max-width:700px">
+        <h2 style="font-size:15px;font-weight:600;margin-bottom:18px">Settings</h2>
+        <div class="settings-grid">
+          <div class="settings-card">
+            <div class="settings-card-title">Ghost Connection</div>
+            <div class="field-group">
+              <label class="field-label">Ghost URL <span style="color:var(--text-dim)">(server config)</span></label>
+              <div class="settings-info" id="settingsGhostUrlDisplay">—</div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Admin API Key</label>
+              <input type="password" class="text-input" id="settingsApiKey" placeholder="id:secret" autocomplete="new-password">
+            </div>
+            <button class="btn btn-primary" id="saveGhostSettings">Save &amp; Reconnect</button>
+          </div>
+          <div class="settings-card">
+            <div class="settings-card-title">Immich Integration</div>
+            <div class="field-group">
+              <label class="field-label">Immich Base URL</label>
+              <input type="url" class="text-input" id="settingsImmichUrl" placeholder="https://immich.example.com">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Immich API Key</label>
+              <input type="password" class="text-input" id="settingsImmichKey" placeholder="your-immich-api-key" autocomplete="new-password">
+            </div>
+            <button class="btn btn-primary" id="saveImmichSettings">Save Immich Config</button>
+          </div>
+        </div>
+
+        <!-- WordPress XML Import -->
+        <div style="margin-top:28px">
+          <div class="settings-card">
+            <div class="settings-card-title">WordPress XML Import</div>
+            <p style="color:var(--text-dim);font-size:.875rem;margin:0 0 16px">Import posts, pages and media from a WordPress XML export (WXR). Creates new content in Ghost — existing posts are not affected.</p>
+
+            <div id="wpXmlDropZone" style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;margin-bottom:16px">
+              <input type="file" id="wpXmlFileInput" accept=".xml" style="display:none">
+              <label for="wpXmlFileInput" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none">
+                <span style="font-size:2rem">📂</span>
+                <span style="font-weight:600">Select WordPress XML export</span>
+                <span style="color:var(--text-dim);font-size:.875rem">or drag &amp; drop the .xml file here</span>
+              </label>
+            </div>
+
+            <div id="wpXmlParseProgress" style="display:none;align-items:center;gap:8px;margin-bottom:16px;font-size:.875rem;color:var(--text-dim)">
+              <div class="spinner" style="width:16px;height:16px"></div><span>Parsing XML…</span>
+            </div>
+
+            <div id="wpXmlPreview" style="display:none">
+              <div id="wpXmlSummary" style="background:var(--surface3);border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:.875rem;line-height:1.8"></div>
+
+              <div id="wpXmlOptions" style="margin-bottom:16px">
+                <div style="margin-bottom:14px">
+                  <label for="wpTestSlug" style="display:block;font-weight:600;margin-bottom:6px;font-size:.875rem">Test mode — single post slug <span style="font-weight:400;color:var(--text-dim)">(optional)</span></label>
+                  <input type="text" id="wpTestSlug"
+                         style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:7px 10px;color:inherit;font-size:.875rem"
+                         placeholder="e.g. meine-zugspitze-tour" autocomplete="off">
+                  <p style="margin:5px 0 0;font-size:.8rem;color:var(--text-dim)">Leave empty to import all posts. Enter a slug to test one post with full debug output.</p>
+                </div>
+                <div style="font-weight:600;margin-bottom:10px;font-size:.875rem">Import options:</div>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;font-size:.875rem">
+                  <input type="checkbox" id="wpOptPublished" checked> Import published posts
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;font-size:.875rem">
+                  <input type="checkbox" id="wpOptDrafts"> Import draft posts
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;font-size:.875rem">
+                  <input type="checkbox" id="wpOptPages" checked> Import pages
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer;font-size:.875rem">
+                  <input type="checkbox" id="wpOptMedia" checked> Download &amp; migrate all media to Ghost
+                </label>
+                <p style="color:#e6a817;font-size:.8rem;margin:0 0 5px">&#9888; Downloads media files from WordPress — keep WordPress accessible during import.</p>
+                <p style="color:#e6a817;font-size:.8rem;margin:0 0 14px">&#9888; Creates new posts in Ghost — existing posts are not affected.</p>
+              </div>
+
+              <button class="btn btn-primary" id="wpXmlImportBtn">🚀 Start Import</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Posts tab ── -->
+    <div class="tab-panel" id="tab-posts">
+      <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+        <input class="search-input" id="postsSearch" placeholder="Search posts &amp; pages…" autocomplete="off">
+        <select class="sort-select" id="postsTypeFilter">
+          <option value="all">Posts &amp; Pages</option>
+          <option value="post">Posts only</option>
+          <option value="page">Pages only</option>
+        </select>
+        <select class="sort-select" id="postsStatusFilter">
+          <option value="all">All statuses</option>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+        </select>
+        <span class="media-count" id="postsCount"></span>
+        <div style="flex:1"></div>
+        <button class="btn-secondary" id="postsRefreshBtn">↺ Refresh</button>
+        <button class="btn-ai" id="bulkExcerptBtn" title="Requires Anthropic API key">✨ Bulk Excerpts</button>
+        <button class="btn-ai" id="createFromImagesBtn" title="Requires Anthropic API key">🖼➜📄 Create from Images</button>
+      </div>
+      <div id="postsState" class="loading-state" style="display:none">
+        <div class="spinner"></div><span>Loading posts…</span>
+      </div>
+      <div id="postsEmpty" class="empty-state" style="display:none">
+        <span style="font-size:32px">📄</span>
+        <span>No posts found</span>
+      </div>
+      <div id="postsTableWrap" style="display:none;overflow-x:auto">
+        <table class="posts-table">
+          <thead>
+            <tr>
+              <th class="posts-th">Title</th>
+              <th class="posts-th">Type</th>
+              <th class="posts-th">Status</th>
+              <th class="posts-th">Tags</th>
+              <th class="posts-th">Excerpt</th>
+              <th class="posts-th">Updated</th>
+              <th class="posts-th" style="width:150px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="postsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Video preview overlay ── -->
+<div class="overlay" id="videoPreviewOverlay">
+  <div class="preview-inner" style="flex-direction:column;align-items:center;max-width:900px;width:100%">
+    <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span id="videoPreviewTitle" style="font-weight:600;font-size:15px;word-break:break-all;padding-right:8px"></span>
+      <button class="close-btn" id="closeVideoPreview">✕</button>
+    </div>
+    <video id="videoPreviewPlayer" controls style="width:100%;max-height:55vh;border-radius:6px;background:#000"></video>
+    <div style="margin-top:12px;width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <span id="videoPreviewMeta" style="font-size:12px;color:var(--text-muted);flex:1;min-width:0"></span>
+      <button class="btn btn-ghost btn-sm" id="videoPreviewCopyBtn">📋 Copy URL</button>
+      <button class="btn btn-ghost btn-sm" id="videoPreviewRenameBtn">✏️ Rename</button>
+      <button class="btn btn-danger btn-sm" id="videoPreviewDeleteBtn">🗑 Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Video delete confirm ── -->
+<div class="overlay" id="videoDeleteOverlay">
+  <div class="modal">
+    <div class="modal-title">Delete Video</div>
+    <p style="color:var(--text-muted);font-size:13px">Permanently delete <strong id="videoDeleteFilename"></strong>?<br>
+    <span style="font-size:12px">The companion thumbnail (<code>_thumb.jpg</code>) will also be removed if it exists.</span></p>
+    <div id="videoDeleteUsageWarning" style="display:none;margin-top:10px;color:var(--warning);font-size:12px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="videoDeleteCancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="videoDeleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Video rename modal ── -->
+<div class="overlay" id="videoRenameOverlay">
+  <div class="modal">
+    <div class="modal-title">Rename Video</div>
+    <div class="field-group">
+      <label class="field-label">Current filename</label>
+      <div id="videoRenameCurrentName" style="font-size:13px;color:var(--text-muted);padding:4px 0;word-break:break-all"></div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">New filename</label>
+      <input type="text" class="text-input" id="videoRenameInput" placeholder="new-video-name.mp4">
+      <div id="videoRenameError" style="font-size:12px;color:var(--danger);margin-top:4px;min-height:16px"></div>
+    </div>
+    <div id="videoRenamePostsNote" style="font-size:12px;color:var(--text-muted);margin-top:6px;display:none"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="videoRenameCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="videoRenameConfirmBtn">Rename &amp; Update Posts</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── File delete confirm ── -->
+<div class="overlay" id="fileDeleteOverlay">
+  <div class="modal">
+    <div class="modal-title">Delete File</div>
+    <p style="color:var(--text-muted);font-size:13px">Permanently delete <strong id="fileDeleteFilename"></strong>?</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="fileDeleteCancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="fileDeleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── File rename modal ── -->
+<div class="overlay" id="fileRenameOverlay">
+  <div class="modal">
+    <div class="modal-title">Rename File</div>
+    <div class="field-group">
+      <label class="field-label">Current filename</label>
+      <div id="fileRenameCurrentName" style="font-size:13px;color:var(--text-muted);padding:4px 0;word-break:break-all"></div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">New filename</label>
+      <input type="text" class="text-input" id="fileRenameInput" placeholder="new-filename.pdf">
+      <div id="fileRenameError" style="font-size:12px;color:var(--danger);margin-top:4px;min-height:16px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="fileRenameCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="fileRenameConfirmBtn">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Preview overlay ── -->
+<div class="overlay" id="previewOverlay">
+  <div class="preview-inner">
+    <div class="preview-img-wrap" id="previewImgWrap">
+      <img id="previewImg" src="" alt="">
+    </div>
+    <div class="preview-meta" id="previewMeta">
+      <div class="preview-close-wrap">
+        <button class="close-btn" id="closePreview">✕</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bulk delete modal ── -->
+<div class="overlay" id="bulkDeleteOverlay">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title" id="bulkDeleteTitle">Delete items?</div>
+
+    <!-- Confirm section -->
+    <div id="bulkDeleteConfirmSection">
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:10px">This will permanently delete:</p>
+      <ul id="bulkDeleteBreakdown" style="margin:0 0 10px 18px;font-size:13px;color:var(--text-muted)"></ul>
+      <div id="bulkDeleteUsageWarning" style="display:none;color:var(--warning);font-size:12px;margin-bottom:10px">
+        ⚠️ Posts using these files will have broken media after deletion.
+      </div>
+    </div>
+
+    <!-- Progress section -->
+    <div id="bulkDeleteProgressSection" style="display:none">
+      <div id="bulkDeleteProgressLabel" style="font-size:13px;color:var(--text-muted);margin-bottom:6px">Deleting…</div>
+      <div style="background:var(--surface3);border-radius:4px;height:8px;overflow:hidden;margin-bottom:4px">
+        <div id="bulkDeleteProgressBar" style="height:100%;background:var(--danger);width:0%;transition:width .2s"></div>
+      </div>
+      <div id="bulkDeleteProgressCount" style="font-size:12px;color:var(--text-muted)">0 / 0</div>
+    </div>
+
+    <!-- Summary section -->
+    <div id="bulkDeleteSummarySection" style="display:none">
+      <div id="bulkDeleteSummary" style="font-size:13px;display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="bulkDeleteCancelBtn">Cancel</button>
+      <button class="btn btn-ghost" id="bulkDeleteAbortBtn" style="display:none">⬛ Abort</button>
+      <button class="btn btn-ghost" id="bulkDeleteCloseBtn" style="display:none">Close</button>
+      <button class="btn btn-danger" id="bulkDeleteConfirmBtn">🗑 Delete all</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete confirm ── -->
+<div class="overlay" id="deleteOverlay">
+  <div class="modal">
+    <div class="modal-title">Delete Image</div>
+    <p style="color:var(--text-muted);font-size:13px">Are you sure you want to permanently delete <strong id="deleteFilename"></strong>?</p>
+    <div id="deleteUsageWarning" style="display:none;margin-top:10px;color:var(--warning);font-size:12px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"  id="deleteCancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Rename modal ── -->
+<div class="overlay" id="renameOverlay">
+  <div class="modal">
+    <div class="modal-title">Rename Image</div>
+    <div class="field-group">
+      <label class="field-label">Current filename</label>
+      <div id="renameCurrentName" style="font-size:13px;color:var(--text-muted);padding:4px 0;word-break:break-all"></div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">New filename</label>
+      <input type="text" class="text-input" id="renameInput" placeholder="new-filename.jpg">
+      <div id="renameError" style="font-size:12px;color:var(--danger);margin-top:4px;min-height:16px"></div>
+      <div id="renameFsNote" style="font-size:11px;margin-top:5px"></div>
+    </div>
+    <div id="renameScanning" class="loading-state" style="display:none;padding:12px 0">
+      <div class="spinner" style="width:20px;height:20px;border-width:2px"></div>
+      <span style="font-size:12px">Scanning all posts and pages…</span>
+    </div>
+    <div id="renameUsageSection" style="display:none">
+      <div class="rename-usage">
+        <strong style="font-size:12px" id="renameUsageSummary"></strong>
+        <ul class="rename-usage-list" id="renameUsageList"></ul>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"   id="renameCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="renameConfirmBtn">Rename &amp; Update Posts</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Image Editor (fullscreen) ── -->
+<div class="overlay" id="editorOverlay">
+  <div id="editorMount"></div>
+</div>
+
+<!-- ── Editor save dialog ── -->
+<div class="overlay" id="editorSaveOverlay">
+  <div class="modal">
+    <div class="modal-title">💾 Save Edited Image</div>
+    <div id="editorSaveUsageInfo"></div>
+    <div class="editor-save-options">
+      <div class="editor-save-opt selected" id="editorOptA">
+        <div class="editor-save-opt-title">Overwrite original</div>
+        <div class="editor-save-opt-desc">Replace the file on disk. The URL stays the same — all posts and tags update instantly.</div>
+      </div>
+      <div class="editor-save-opt" id="editorOptB">
+        <div class="editor-save-opt-title">Save as new file</div>
+        <div class="editor-save-opt-desc">Upload under a new name. Original is untouched. Markdown link is copied to clipboard.</div>
+        <div class="editor-save-new-form" id="editorOptBForm">
+          <input class="input" id="editorSaveNewFilename" placeholder="new-filename.jpg" style="margin-top:8px;width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="editorSaveCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="editorSaveConfirmBtn">Overwrite</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Usage popup ── -->
+<div class="overlay" id="usageOverlay">
+  <div class="modal" id="usagePopup">
+    <div class="modal-title" id="usagePopupTitle">Used in posts</div>
+    <ul class="usage-popup-list" id="usagePopupList"></ul>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="usagePopupClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AI: Improve dialog ── -->
+<div class="overlay" id="improveOverlay">
+  <div class="modal" style="width:min(680px,calc(100vw - 32px))">
+    <div class="modal-title">🪄 Improve Post</div>
+    <div id="improvePostTitle" style="font-size:13px;font-weight:600;margin-bottom:12px;word-break:break-word"></div>
+    <!-- Setup screen -->
+    <div id="improveSetupScreen" style="display:none">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">What should be improved?</div>
+      <div id="improveFieldCheckboxes" style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+        <label class="improve-check-label"><input type="checkbox" class="improve-field-chk" value="title" checked> Title</label>
+        <label class="improve-check-label"><input type="checkbox" class="improve-field-chk" value="excerpt" checked> Excerpt</label>
+        <label class="improve-check-label"><input type="checkbox" class="improve-field-chk" value="meta_title" checked> SEO Title</label>
+        <label class="improve-check-label"><input type="checkbox" class="improve-field-chk" value="meta_description" checked> SEO Description</label>
+        <label class="improve-check-label"><input type="checkbox" class="improve-field-chk" value="tags" checked> Tags</label>
+        <div>
+          <label class="improve-check-label"><input type="checkbox" id="improve-check-body" class="improve-field-chk" value="body" checked> Post Body</label>
+          <div id="improveBodyModeRow" style="display:flex;flex-direction:column;gap:5px;margin:5px 0 2px 20px;font-size:12px;color:var(--text-muted)">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="improveBodyMode" id="improveBodyModeFeedback" value="feedback" checked style="accent-color:var(--accent)"> <span><strong>Feedback only</strong> &mdash; AI describes what to improve</span></label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="improveBodyMode" id="improveBodyModeGenerate" value="generate" style="accent-color:var(--accent)"> <span><strong>Generate content</strong> &mdash; AI writes new paragraphs</span></label>
+            <div id="improveBodyLengthRow" style="display:none;flex-wrap:wrap;gap:10px;align-items:center;padding-top:4px">
+              <span style="color:var(--text-dim)">Length:</span>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="improveBodyLength" value="short" style="accent-color:var(--accent)"> Short (~150 w)</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="improveBodyLength" value="medium" checked style="accent-color:var(--accent)"> Medium (~300 w)</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="improveBodyLength" value="long" style="accent-color:var(--accent)"> Long (~500 w)</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;font-weight:500;display:block;margin-bottom:6px">Additional instructions <span style="font-weight:400;color:var(--text-dim)">(optional)</span></label>
+        <textarea id="improveInstructions" class="text-input" rows="2" maxlength="500" style="width:100%;resize:vertical" placeholder='e.g. &quot;make it more formal&quot; or &quot;focus on the hiking audience&quot;'></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:3px"><span id="improveInstructionsCounter" style="font-size:12px;color:var(--text-dim)">0 / 500</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:13px;font-weight:500;white-space:nowrap">Language</label>
+        <select id="improveLanguage" class="text-input" style="flex:1"></select>
+      </div>
+    </div>
+    <!-- Loading -->
+    <div id="improveGenerating" class="loading-state" style="display:none;padding:20px 0">
+      <div class="spinner" style="width:24px;height:24px;border-width:2px"></div>
+      <span>Analysing post with AI…</span>
+    </div>
+    <!-- Results -->
+    <div id="improveResults" style="display:none">
+      <div id="improveFeedback" class="improve-feedback" style="display:none"></div>
+      <div id="improveFields"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"     id="improveCancelBtn">Cancel</button>
+      <button class="btn btn-ghost"     id="improveBackBtn"       style="display:none">&larr; Back</button>
+      <button class="btn btn-secondary" id="improveRegenerateBtn" style="display:none">&#x21BB; Regenerate</button>
+      <button class="btn btn-primary"   id="improveStartBtn"      style="display:none" disabled>🪄 Generate Suggestions &rarr;</button>
+      <button class="btn btn-primary"   id="improveSaveBtn"       style="display:none">&#x2714; Apply Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AI: Bulk excerpt dialog ── -->
+<div class="overlay" id="bulkExcerptOverlay">
+  <div class="modal" style="width:min(640px,calc(100vw - 32px))">
+    <div class="modal-title">✨ Bulk Generate Excerpts</div>
+    <!-- Config screen -->
+    <div id="bulkExcerptConfig">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+        Generates excerpts using Claude for posts that are missing one.
+        Each post is a separate API call — this may take a moment.
+      </p>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <input type="checkbox" id="bulkIncludeExisting" style="accent-color:var(--accent);width:15px;height:15px">
+        <label for="bulkIncludeExisting" style="font-size:13px;cursor:pointer">Also overwrite posts that already have an excerpt</label>
+      </div>
+      <div id="bulkScope" style="font-size:12px;color:var(--text-muted);margin-bottom:16px"></div>
+      <div class="modal-footer" style="margin-top:0">
+        <button class="btn btn-ghost"    id="bulkExcerptCancelBtn">Cancel</button>
+        <button class="btn btn-primary"  id="bulkExcerptStartBtn">✨ Start</button>
+      </div>
+    </div>
+    <!-- Progress screen -->
+    <div id="bulkExcerptProgress" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span id="bulkProgressLabel" style="font-size:13px;color:var(--text-muted)"></span>
+        <span id="bulkProgressCount" style="font-size:12px;color:var(--text-dim)"></span>
+      </div>
+      <div style="background:var(--surface3);border-radius:4px;height:6px;margin-bottom:14px;overflow:hidden">
+        <div id="bulkProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width .3s ease;border-radius:4px"></div>
+      </div>
+      <div id="bulkProgressLog" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;font-size:12px"></div>
+      <div class="modal-footer" style="margin-top:16px">
+        <button class="btn btn-ghost" id="bulkExcerptAbortBtn">Stop</button>
+        <button class="btn btn-primary" id="bulkExcerptDoneBtn" style="display:none">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── AI: Excerpt dialog ── -->
+<div class="overlay" id="excerptOverlay">
+  <div class="modal">
+    <div class="modal-title">✨ Generate Excerpt</div>
+    <div id="excerptPostTitle" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;word-break:break-word"></div>
+    <div id="excerptCurrentWrap" style="margin-bottom:12px;display:none">
+      <div class="field-label" style="margin-bottom:4px">Current excerpt</div>
+      <div id="excerptCurrent" style="font-size:12px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;word-break:break-word"></div>
+    </div>
+    <div id="excerptGenerating" class="loading-state" style="display:none;padding:16px 0">
+      <div class="spinner" style="width:22px;height:22px;border-width:2px"></div>
+      <span style="font-size:13px">Generating excerpt…</span>
+    </div>
+    <div id="excerptResultWrap" style="display:none">
+      <div class="field-label" style="margin-bottom:6px">Generated excerpt</div>
+      <textarea id="excerptResult" class="text-input" rows="3" style="resize:vertical;width:100%;font-size:13px"></textarea>
+      <div id="excerptCharCount" style="font-size:11px;color:var(--text-muted);margin-top:3px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"    id="excerptCancelBtn">Cancel</button>
+      <button class="btn btn-secondary" id="excerptRegenerateBtn" style="display:none">↻ Regenerate</button>
+      <button class="btn btn-primary"  id="excerptSaveBtn" style="display:none">✔ Save Excerpt</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Create AI Draft Post dialog ── -->
+<div class="overlay" id="createFromImagesOverlay">
+  <div class="modal" style="width:min(700px,calc(100vw - 32px))">
+    <div class="modal-title">✨ Create AI Draft Post</div>
+    <!-- Media strip (always visible during setup + generation) -->
+    <div class="cfig-image-strip" id="cfigImageStrip"></div>
+    <!-- Non-PDF notice (shown when Files selection contains non-PDF items) -->
+    <div id="cfigNonPdfNotice" style="display:none;font-size:12px;color:var(--text-dim);padding:4px 0 0"></div>
+    <!-- SCREEN 1: Setup -->
+    <div id="cfigSetupScreen" style="display:none;padding:4px 0 4px">
+      <div id="cfigNoMediaHint" style="display:none;font-size:13px;color:var(--text-dim);padding:6px 0 10px">✍️ Text-only post &mdash; no images, videos, or PDFs selected.</div>
+      <div style="margin-top:6px">
+        <label style="font-size:13px;font-weight:500">What should this post be about? <span style="color:var(--error)">*</span></label>
+        <textarea id="cfigPrompt" class="text-input" rows="4" style="resize:vertical;width:100%;margin-top:6px" placeholder="Describe the post topic, angle, tone or key points&hellip;"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px"><span id="cfigPromptCounter" style="font-size:12px;color:var(--error)">0 / 20 min</span></div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+        <label style="font-size:13px;font-weight:500;white-space:nowrap">Language</label>
+        <select id="cfigLanguage" class="text-input" style="flex:1"></select>
+      </div>
+      <div id="cfigCostLine" style="font-size:12px;color:var(--text-dim);margin-top:8px"></div>
+    </div>
+    <!-- SCREEN 2: Generating -->
+    <div id="cfigGenerating" class="loading-state" style="display:none;padding:20px 0">
+      <div class="spinner" style="width:24px;height:24px;border-width:2px"></div>
+      <span>Generating with Claude&hellip;</span>
+    </div>
+    <!-- SCREEN 3: Error -->
+    <div id="cfigError" style="display:none;color:var(--error);font-size:13px;padding:8px 0"></div>
+    <!-- SCREEN 4: Editable fields -->
+    <div id="cfigFields" style="display:none" class="cfig-field-group">
+      <div class="cfig-field"><label>Title</label>
+        <input type="text" id="cfigTitle" class="text-input" style="width:100%"></div>
+      <div class="cfig-field"><label>Excerpt <span style="font-weight:400;font-style:italic">(optional, max 300 chars)</span></label>
+        <textarea id="cfigExcerpt" class="text-input" rows="2" style="resize:vertical;width:100%"></textarea></div>
+      <div class="cfig-field"><label>Post body (HTML)</label>
+        <textarea id="cfigContent" class="text-input" rows="8" style="resize:vertical;width:100%;font-family:monospace;font-size:12px"></textarea></div>
+      <div class="cfig-field"><label>Tags <span style="font-weight:400;font-style:italic">(comma-separated)</span></label>
+        <input type="text" id="cfigTags" class="text-input" style="width:100%"></div>
+      <div class="cfig-field"><label>Feature image</label>
+        <select id="cfigFeatureImage" class="text-input" style="width:100%"></select></div>
+    </div>
+    <!-- SCREEN 5: Success -->
+    <div id="cfigSaved" style="display:none;padding:24px 0;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">&#x2705;</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">Draft created successfully!</div>
+      <a id="cfigPostLink" href="#" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:var(--accent)">Open in Ghost Editor &rarr;</a>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"     id="cfigCloseBtn">Cancel</button>
+      <button class="btn btn-primary"   id="cfigGenerateBtn" style="display:none" disabled>✨ Generate Post &rarr;</button>
+      <button class="btn btn-secondary" id="cfigRegenerateBtn" style="display:none">&circlearrowleft; Edit &amp; Regenerate</button>
+      <button class="btn btn-primary"   id="cfigSaveBtn" style="display:none">&#x1F4C4; Save as Draft</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Immich preview ── -->
+<div class="overlay" id="immichPreviewOverlay">
+  <div class="modal modal-wide" style="position:relative">
+    <button class="close-btn" id="closeImmichPreview" style="position:absolute;top:12px;right:12px">✕</button>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div style="flex:0 0 auto;max-width:50%">
+        <img id="immichPreviewImg" src="" alt="" style="max-width:100%;border-radius:8px;max-height:70vh;object-fit:contain">
+      </div>
+      <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px">
+        <div id="immichPreviewMeta"></div>
+        <button class="btn btn-primary" id="useInGhostBtn" style="margin-top:auto">⬆ Use in Ghost</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WordPress XML Import progress overlay -->
+<div class="overlay" id="wpImportOverlay">
+  <div class="modal" style="width:min(560px,calc(100vw - 32px))">
+    <div class="modal-title">📥 Importing from WordPress</div>
+
+    <div id="wpImportMediaSection" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-size:.8rem;color:var(--text-dim)">Media</span>
+        <span id="wpImportMediaLabel" style="font-size:.8rem;color:var(--text-dim)">0 / 0</span>
+      </div>
+      <div style="background:var(--surface3);border-radius:4px;height:6px;overflow:hidden">
+        <div id="wpImportMediaBar" style="height:100%;background:var(--accent);width:0%;transition:width .3s ease;border-radius:4px"></div>
+      </div>
+    </div>
+
+    <div id="wpImportPostsSection" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-size:.8rem;color:var(--text-dim)">Posts / Pages</span>
+        <span id="wpImportPostsLabel" style="font-size:.8rem;color:var(--text-dim)">0 / 0</span>
+      </div>
+      <div style="background:var(--surface3);border-radius:4px;height:6px;overflow:hidden">
+        <div id="wpImportPostsBar" style="height:100%;background:var(--accent);width:0%;transition:width .3s ease;border-radius:4px"></div>
+      </div>
+    </div>
+
+    <div id="wpImportLog" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;font-size:.75rem;font-family:monospace;background:var(--surface3);border-radius:4px;padding:8px;margin-bottom:16px"></div>
+
+    <div class="modal-footer" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="wpImportCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="wpImportDownloadBtn" style="display:none">📥 Download import-log.json</button>
+      <button class="btn btn-primary" id="wpImportDoneBtn" style="display:none">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Insert Image into Post overlay -->
+<div class="overlay" id="insertImageOverlay">
+  <div class="modal">
+    <div class="modal-title">📌 Insert Image into Post</div>
+    <div class="field-group">
+      <label class="field-label">Post or Page</label>
+      <select class="text-input" id="insertPostSelect" style="width:100%">
+        <option value="">— select a post —</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Insert position</label>
+      <select class="text-input" id="insertPosition" style="width:100%">
+        <option value="end">End of post</option>
+        <option value="beginning">Beginning of post</option>
+        <option value="after-first-image">After first image</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Card width</label>
+      <select class="text-input" id="insertCardWidth" style="width:100%">
+        <option value="regular">Regular</option>
+        <option value="wide">Wide</option>
+        <option value="full">Full</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Alt text</label>
+      <input type="text" class="text-input" id="insertAltText" placeholder="Describe the image…">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Caption <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+      <input type="text" class="text-input" id="insertCaption" placeholder="">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="insertCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="insertConfirmBtn">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Insert Gallery into Post overlay -->
+<div class="overlay" id="insertGalleryOverlay">
+  <div class="modal">
+    <div class="modal-title">🖼️ Insert Gallery into Post</div>
+    <div class="field-group">
+      <label class="field-label">Post or Page</label>
+      <select class="text-input" id="insertGalleryPostSelect" style="width:100%">
+        <option value="">— select a post —</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Insert position</label>
+      <select class="text-input" id="insertGalleryPosition" style="width:100%">
+        <option value="end">End of post</option>
+        <option value="beginning">Beginning of post</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Caption <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+      <input type="text" class="text-input" id="galleryCaption" placeholder="Gallery caption…">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Image order <span style="color:var(--text-muted);font-weight:400">(drag to reorder)</span></label>
+      <div id="galleryOrderStrip" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;border:1px solid var(--border);border-radius:6px;min-height:60px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="insertGalleryCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="insertGalleryConfirmBtn">Insert Gallery</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js"></script>
+</body>
+</html>

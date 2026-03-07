@@ -1,0 +1,33 @@
+# Dependencies (rebuilt in container)
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed at runtime)
+internal/
+*.md
+LICENSE
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Editor / OS
+.vscode/
+*.code-workspace
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs
+*.log

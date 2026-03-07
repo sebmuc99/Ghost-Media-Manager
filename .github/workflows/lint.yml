@@ -1,0 +1,22 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - name: Check syntax
+        run: |
+          node --check server.js
+          node --check server/lib/lexical.js
+          node --check server/lib/ghost.js
+          node --check server/lib/filesystem.js
+          node --check server/lib/imageProcessing.js
