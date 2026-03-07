@@ -11,18 +11,24 @@ services:
       # - PUBLIC_URL=https://your-ghost-manager.example.com
       # Optional: AI features
       # - ANTHROPIC_API_KEY=sk-ant-...
+      # - AI_MODEL_TEXT=claude-haiku-4-5-20251001
+      # - AI_MODEL_VISION=claude-opus-4-6
+      # - AI_MODEL_CONTENT=claude-sonnet-4-6
       # Optional: Immich integration
       # - IMMICH_URL=https://your-immich.com
       # - IMMICH_API_KEY=your-immich-key
+      # Optional: filesystem paths (add when mounting volumes below)
+      # - GHOST_MEDIA_PATH=/ghost-images
+      # - GHOST_MEDIA_VIDEO_PATH=/ghost-media
+      # - GHOST_MEDIA_FILES_PATH=/ghost-files
+      # Optional: force production mode
+      # - NODE_ENV=production
     # Optional: mount Ghost content directories for full functionality
+    # (enables rename, delete, image editor, usage badges)
     # volumes:
     #   - /path/to/ghost/content/images:/ghost-images
     #   - /path/to/ghost/content/media:/ghost-media
     #   - /path/to/ghost/content/files:/ghost-files
-    # environment:
-    #   - GHOST_MEDIA_PATH=/ghost-images
-    #   - GHOST_MEDIA_VIDEO_PATH=/ghost-media
-    #   - GHOST_MEDIA_FILES_PATH=/ghost-files
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3334/api/health"]
       interval: 30s
