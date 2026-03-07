@@ -8,6 +8,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+<!-- CodeMirror 5 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/htmlmixed/htmlmixed.min.js"></script>
 <style>
 /* ── Image Editor overlay ── */
 #editorOverlay {
@@ -567,6 +575,28 @@ select.sort-select {
   display: flex; gap: 16px; padding: 4px 14px; font-size: 11px;
   color: var(--text-dim); background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0;
 }
+/* CodeMirror host wrapper inside editor body */
+.he-cm-host {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+}
+.he-cm-host .CodeMirror {
+  flex: 1; height: 100%;
+  font-family: 'Roboto Mono', 'Fira Mono', Consolas, monospace;
+  font-size: 12px; line-height: 1.67;
+  border: none;
+}
+.he-cm-host .CodeMirror-scroll { height: 100%; overflow-y: auto !important; overflow-x: auto !important; }
+.he-cm-host .CodeMirror-sizer { min-height: 100%; }
+/* Load-card modal card list */
+.he-card-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; padding: 2px 0; }
+.he-card-item {
+  border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; cursor: pointer;
+  font-family: 'Roboto Mono', Consolas, monospace; font-size: 11px; color: var(--text-muted);
+  background: var(--surface2); white-space: pre; overflow: hidden; text-overflow: ellipsis;
+  transition: border-color var(--transition), background var(--transition);
+}
+.he-card-item:hover { border-color: var(--accent); background: var(--accent-subtle); color: var(--text); }
+.he-card-item-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
@@ -751,6 +781,7 @@ select.sort-select {
         </div>
         <div class="he-actions">
           <button class="btn btn-ghost btn-sm" id="hePickImageBtn">🖼 Insert Image</button>
+          <button class="btn btn-ghost btn-sm" id="heLoadCardBtn">📂 Load HTML Card</button>
           <button class="btn btn-ghost btn-sm" id="heClearBtn">Clear</button>
           <button class="btn btn-ghost btn-sm" id="heCopyBtn">📋 Copy HTML</button>
           <button class="btn btn-primary btn-sm" id="heInsertPostBtn">→ Insert into Post</button>
@@ -760,8 +791,9 @@ select.sort-select {
         <div class="he-editor-pane">
           <div class="he-pane-header">HTML EDITOR</div>
           <div class="he-editor-body">
-            <div class="he-line-nums" id="heLineNums">1</div>
-            <textarea class="he-textarea" id="heTextarea" spellcheck="false" placeholder="Paste or type HTML here…"></textarea>
+            <!-- CodeMirror mounts here; #heTextarea kept as hidden sync target -->
+            <div class="he-cm-host" id="heCmHost"></div>
+            <textarea class="he-textarea" id="heTextarea" spellcheck="false" style="display:none"></textarea>
           </div>
         </div>
         <div class="he-preview-pane">
@@ -1450,6 +1482,26 @@ select.sort-select {
     <div id="heImageEmpty" class="empty-state" style="display:none"><span>No images found</span></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="hePickerCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- HTML Editor — Load HTML Card overlay -->
+<div class="overlay" id="heLoadCardOverlay">
+  <div class="modal" style="max-width:680px;width:94vw">
+    <div class="modal-title">📂 Load HTML Card from Post</div>
+    <div class="field-group">
+      <label class="field-label">Post or Page</label>
+      <select class="text-input" id="heLoadCardPostSelect" style="width:100%">
+        <option value="">— select a post —</option>
+      </select>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="heLoadCardFetchBtn" style="margin-bottom:12px" disabled>Fetch HTML cards</button>
+    <div id="heLoadCardList" class="he-card-list" style="display:none"></div>
+    <div id="heLoadCardEmpty" class="empty-state" style="display:none"><span>No HTML cards found in this post</span></div>
+    <div id="heLoadCardSpinner" class="loading-state" style="display:none"><div class="spinner"></div><span>Loading…</span></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="heLoadCardCancelBtn">Cancel</button>
     </div>
   </div>
 </div>

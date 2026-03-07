@@ -25,7 +25,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 const rateLimit     = require('express-rate-limit');
 
-const { replaceUrlInLexical, insertParagraphNodes, buildImageNode, insertImageNode, buildGalleryNode, insertGalleryNode, buildHtmlNode, insertHtmlNode } = require('./server/lib/lexical');
+const { replaceUrlInLexical, insertParagraphNodes, buildImageNode, insertImageNode, buildGalleryNode, insertGalleryNode, buildHtmlNode, insertHtmlNode, extractHtmlNodes } = require('./server/lib/lexical');
 const { ghostRequest, ghostFetchAll, getPost, updatePost, uploadImage, uploadMedia, uploadFile, getGhostLang } = require('./server/lib/ghost');
 const { walkContentDir, resolveContentPath, urlToContentPath } = require('./server/lib/filesystem');
 const { portraitToLandscape, titleToFilename } = require('./server/lib/imageProcessing');
@@ -1471,6 +1471,25 @@ app.get('/api/posts/:type/:id', requireGhostAuth, async (req, res) => {
     return res.json(item);
   } catch {
     return res.status(500).json({ error: 'Network error' });
+  }
+});
+
+// ── Posts: list HTML cards in a post (for HTML editor Load feature) ───────────────────────
+app.get('/api/posts/:type/:id/html-cards', requireGhostAuth, async (req, res) => {
+  const apiKey       = req.apiKey;
+  const { type, id } = req.params;
+  if (!['posts', 'pages'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+  try {
+    const r = await ghostRequest(apiKey, `/${type}/${id}/?formats=lexical&fields=id,title,lexical`);
+    if (!r.ok) return res.status(r.status).json({ error: `Ghost error ${r.status}` });
+    const data = await r.json();
+    const post = (data[type] || [])[0];
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+    const empty = '{"root":{"children":[],"direction":null,"format":"","indent":0,"type":"root","version":1}}';
+    const htmlCards = extractHtmlNodes(post.lexical || empty);
+    return res.json({ title: post.title, htmlCards });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || 'Network error' });
   }
 });
 

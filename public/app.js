@@ -3836,17 +3836,33 @@ async function insertGallery() {
 
 // ── HTML Live Editor ───────────────────────────────────────────────────────────────────────────
 function initHtmlEditorTab() {
-  const ta          = document.getElementById('heTextarea');
-  const lineNums    = document.getElementById('heLineNums');
-  const frame       = document.getElementById('hePreview');
+  const cmHost      = document.getElementById('heCmHost');
   const statusPos   = document.getElementById('heStatusPos');
   const statusChars = document.getElementById('heStatusChars');
   const statusValid = document.getElementById('heStatusValid');
 
-  if (ta._heInit) return; // already wired
-  ta._heInit = true;
+  if (cmHost._heInit) return; // already wired
+  cmHost._heInit = true;
 
-  // ── Snippet templates ───────────────────────────────────────────────────────────────────
+  // ── Create CodeMirror instance ────────────────────────────────────────────
+  const cm = CodeMirror(cmHost, {
+    mode:          'htmlmixed',
+    theme:         'dracula',
+    lineNumbers:   true,
+    indentWithTabs: false,
+    indentUnit:    2,
+    tabSize:       2,
+    lineWrapping:  false,
+    autofocus:     false,
+    extraKeys: {
+      Tab: function(cmInst) {
+        if (cmInst.somethingSelected()) cmInst.indentSelection('add');
+        else cmInst.replaceSelection('  ', 'end');
+      },
+    },
+  });
+
+  // ── Snippet templates ─────────────────────────────────────────────────────
   const SNIPPETS = {
     'two-col':
 `<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;font-family:Georgia,serif">
@@ -3926,7 +3942,7 @@ function initHtmlEditorTab() {
 </div>`,
   };
 
-  // ── Preview wrappers ───────────────────────────────────────────────────────────────────
+  // ── Preview wrappers ───────────────────────────────────────────────────────
   const PREVIEW_WRAP = {
     raw:   html => `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:16px;font-family:-apple-system,sans-serif;line-height:1.6}</style></head><body>${html}</body></html>`,
     ghost: html => `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#fff;font-family:Georgia,serif;color:#1f2937;line-height:1.75}.gh{max-width:720px;margin:32px auto;padding:0 24px}</style></head><body><div class="gh">${html}</div></body></html>`,
@@ -3934,21 +3950,17 @@ function initHtmlEditorTab() {
   };
 
   let currentMode = 'raw';
+  const frame = document.getElementById('hePreview');
 
-  // ── Helpers ────────────────────────────────────────────────────────────────────────────────
-  function updateLineNumbers() {
-    const count = ta.value.split('\n').length;
-    lineNums.textContent = Array.from({ length: count }, (_, i) => i + 1).join('\n');
-  }
-
+  // ── Helpers ────────────────────────────────────────────────────────────────
   function updatePreview() {
-    frame.srcdoc = PREVIEW_WRAP[currentMode](ta.value);
+    frame.srcdoc = PREVIEW_WRAP[currentMode](cm.getValue());
   }
 
   function updateStatus() {
-    const val   = ta.value;
-    const lines = val.substring(0, ta.selectionStart).split('\n');
-    statusPos.textContent   = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+    const val    = cm.getValue();
+    const cursor = cm.getCursor();
+    statusPos.textContent   = `Ln ${cursor.line + 1}, Col ${cursor.ch + 1}`;
     statusChars.textContent = `${val.length} chars`;
     if (!val.trim()) {
       statusValid.textContent = '';
@@ -3956,45 +3968,30 @@ function initHtmlEditorTab() {
       const open  = (val.match(/</g)  || []).length;
       const close = (val.match(/>/g)  || []).length;
       if (open !== close) {
-        statusValid.textContent  = '⚠ unclosed tag?';
-        statusValid.style.color  = 'var(--warning)';
+        statusValid.textContent = '⚠ unclosed tag?';
+        statusValid.style.color = 'var(--warning)';
       } else {
-        statusValid.textContent  = '✓ ready';
-        statusValid.style.color  = 'var(--success)';
+        statusValid.textContent = '✓ ready';
+        statusValid.style.color = 'var(--success)';
       }
     }
   }
 
   function insertAtCursor(text) {
-    const start  = ta.selectionStart;
-    const before = ta.value.substring(0, start);
-    const after  = ta.value.substring(ta.selectionEnd);
-    const insert = (before && !before.endsWith('\n')) ? '\n' + text : text;
-    ta.value = before + insert + after;
-    ta.selectionStart = ta.selectionEnd = start + insert.length;
-    ta.focus();
-    updateLineNumbers();
+    const cursor = cm.getCursor();
+    const line   = cm.getLine(cursor.line);
+    const insert = (line.trim() !== '') ? '\n' + text : text;
+    cm.replaceRange(insert, cursor);
+    cm.focus();
     updatePreview();
     updateStatus();
   }
 
-  // ── Events ───────────────────────────────────────────────────────────────────────────────
-  ta.addEventListener('input',  () => { updateLineNumbers(); updatePreview(); updateStatus(); });
-  ta.addEventListener('click',  updateStatus);
-  ta.addEventListener('keyup',  updateStatus);
-  ta.addEventListener('scroll', () => { lineNums.scrollTop = ta.scrollTop; });
+  // ── CodeMirror events ──────────────────────────────────────────────────────
+  cm.on('change',         () => { updatePreview(); updateStatus(); });
+  cm.on('cursorActivity', updateStatus);
 
-  ta.addEventListener('keydown', e => {
-    if (e.key !== 'Tab') return;
-    e.preventDefault();
-    const start = ta.selectionStart;
-    ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(ta.selectionEnd);
-    ta.selectionStart = ta.selectionEnd = start + 2;
-    updateLineNumbers();
-    updatePreview();
-    updateStatus();
-  });
-
+  // ── Snippets ──────────────────────────────────────────────────────────────
   document.querySelectorAll('.he-snippet').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = SNIPPETS[btn.dataset.snippet];
@@ -4002,6 +3999,7 @@ function initHtmlEditorTab() {
     });
   });
 
+  // ── Preview modes ─────────────────────────────────────────────────────────
   document.querySelectorAll('.he-mode').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.he-mode').forEach(b => b.classList.remove('active'));
@@ -4011,8 +4009,9 @@ function initHtmlEditorTab() {
     });
   });
 
+  // ── Copy HTML ─────────────────────────────────────────────────────────────
   document.getElementById('heCopyBtn').addEventListener('click', async () => {
-    const html = ta.value;
+    const html = cm.getValue();
     if (!html.trim()) { toast('Nothing to copy', 'warning'); return; }
     try {
       await navigator.clipboard.writeText(html);
@@ -4022,17 +4021,17 @@ function initHtmlEditorTab() {
     }
   });
 
+  // ── Clear ─────────────────────────────────────────────────────────────────
   document.getElementById('heClearBtn').addEventListener('click', () => {
-    if (!ta.value.trim()) return;
+    if (!cm.getValue().trim()) return;
     if (!confirm('Clear the editor? This cannot be undone.')) return;
-    ta.value = '';
-    updateLineNumbers();
+    cm.setValue('');
     updatePreview();
     updateStatus();
-    ta.focus();
+    cm.focus();
   });
 
-  // ── Image Picker ──────────────────────────────────────────────────────────────
+  // ── Image Picker ──────────────────────────────────────────────────────────
   document.getElementById('hePickImageBtn').addEventListener('click', () => {
     const overlay   = document.getElementById('heImagePickerOverlay');
     const grid      = document.getElementById('heImageGrid');
@@ -4083,9 +4082,110 @@ function initHtmlEditorTab() {
     document.getElementById('heImagePickerOverlay').classList.remove('show');
   });
 
-  // ── Insert into Post ──────────────────────────────────────────────────────────
+  // ── Load HTML Card from Post ───────────────────────────────────────────────
+  document.getElementById('heLoadCardBtn').addEventListener('click', () => {
+    const overlay    = document.getElementById('heLoadCardOverlay');
+    const postSel    = document.getElementById('heLoadCardPostSelect');
+    const fetchBtn   = document.getElementById('heLoadCardFetchBtn');
+    const cardList   = document.getElementById('heLoadCardList');
+    const emptyMsg   = document.getElementById('heLoadCardEmpty');
+    const spinner    = document.getElementById('heLoadCardSpinner');
+
+    // Reset state
+    cardList.style.display  = 'none';
+    emptyMsg.style.display  = 'none';
+    spinner.style.display   = 'none';
+    cardList.innerHTML      = '';
+    fetchBtn.disabled       = true;
+    postSel.innerHTML       = '<option value="">— select a post —</option>';
+
+    const fill = (posts) => {
+      posts.forEach(p => {
+        const opt        = document.createElement('option');
+        opt.value        = p.id;
+        opt.dataset.type = p._type === 'page' ? 'pages' : 'posts';
+        opt.textContent  = `${p._type === 'page' ? '[Page] ' : ''}${p.title || '(untitled)'}`;
+        postSel.appendChild(opt);
+      });
+    };
+
+    if (state.postsData.length > 0) fill(state.postsData);
+    else loadPosts().then(() => fill(state.postsData));
+
+    postSel.onchange = () => {
+      fetchBtn.disabled = !postSel.value;
+      cardList.style.display = 'none';
+      emptyMsg.style.display = 'none';
+      cardList.innerHTML = '';
+    };
+
+    fetchBtn.onclick = async () => {
+      const postId   = postSel.value;
+      const postType = postSel.selectedOptions[0]?.dataset.type || 'posts';
+      if (!postId) return;
+
+      spinner.style.display  = 'flex';
+      cardList.style.display = 'none';
+      emptyMsg.style.display = 'none';
+      cardList.innerHTML     = '';
+      fetchBtn.disabled      = true;
+
+      try {
+        const res  = await api(`/api/posts/${postType}/${postId}/html-cards`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+
+        spinner.style.display = 'none';
+        fetchBtn.disabled     = false;
+
+        if (!data.htmlCards || data.htmlCards.length === 0) {
+          emptyMsg.style.display = 'flex';
+          return;
+        }
+
+        data.htmlCards.forEach((card, i) => {
+          const item = document.createElement('div');
+          item.className = 'he-card-item';
+          const label = document.createElement('div');
+          label.className   = 'he-card-item-label';
+          label.textContent = `HTML Card ${i + 1} of ${data.htmlCards.length}`;
+          const preview = document.createElement('div');
+          preview.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+          preview.textContent   = card.html.slice(0, 120).replace(/\s+/g, ' ');
+          item.appendChild(label);
+          item.appendChild(preview);
+          item.addEventListener('click', () => {
+            if (cm.getValue().trim()) {
+              if (!confirm('Replace current editor content with this HTML card?')) return;
+            }
+            cm.setValue(card.html);
+            updatePreview();
+            updateStatus();
+            cm.focus();
+            overlay.classList.remove('show');
+            toast(`HTML Card ${i + 1} loaded ✓`, 'success');
+          });
+          cardList.appendChild(item);
+        });
+        cardList.style.display = 'flex';
+
+      } catch (e) {
+        spinner.style.display = 'none';
+        fetchBtn.disabled     = false;
+        toast(`Failed to load cards: ${e.message}`, 'error');
+      }
+    };
+
+    overlay.classList.add('show');
+  });
+
+  document.getElementById('heLoadCardCancelBtn').addEventListener('click', () => {
+    document.getElementById('heLoadCardOverlay').classList.remove('show');
+  });
+
+  // ── Insert into Post ──────────────────────────────────────────────────────
   document.getElementById('heInsertPostBtn').addEventListener('click', () => {
-    if (!ta.value.trim()) { toast('Nothing to insert — editor is empty', 'warning'); return; }
+    if (!cm.getValue().trim()) { toast('Nothing to insert — editor is empty', 'warning'); return; }
 
     const sel = document.getElementById('heInsertPostSelect');
     sel.innerHTML = '<option value="">— select a post —</option>';
@@ -4123,7 +4223,7 @@ function initHtmlEditorTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode:     'html',
-          html:     ta.value,
+          html:     cm.getValue(),
           postId,
           postType,
           position: document.getElementById('heInsertPosition').value,
@@ -4142,8 +4242,7 @@ function initHtmlEditorTab() {
     }
   });
 
-  // ── Initial render ───────────────────────────────────────────────────────────────────
-  updateLineNumbers();
+  // ── Initial render ─────────────────────────────────────────────────────────
   updatePreview();
   updateStatus();
 }

@@ -256,6 +256,7 @@ module.exports = {
   insertGalleryNode,
   buildHtmlNode,
   insertHtmlNode,
+  extractHtmlNodes,
 };
 
 // ── buildHtmlNode ─────────────────────────────────────────────────────────────
@@ -277,4 +278,16 @@ function insertHtmlNode(lexicalJson, htmlNode, position = 'end') {
     root.children.push(htmlNode);
   }
   return JSON.stringify(doc);
+}
+
+// ── extractHtmlNodes ──────────────────────────────────────────────────────────
+// Extract all html card nodes from a Lexical JSON string.
+// Returns [{ index, html }] for each html-type child of root.
+function extractHtmlNodes(lexicalJson) {
+  const doc = JSON.parse(lexicalJson);
+  const children = (doc.root && doc.root.children) || [];
+  return children
+    .map((node, index) => ({ index, node }))
+    .filter(({ node }) => node.type === 'html')
+    .map(({ index, node }) => ({ index, html: node.html || '' }));
 }
