@@ -81,9 +81,9 @@ app.use(helmet({
       formAction:     ["'self'"],
       frameAncestors: ["'self'"],
       objectSrc:      ["'none'"],
-      scriptSrc:      ["'self'", "'unsafe-inline'", 'https://scaleflex.cloudimg.io', 'https://fonts.googleapis.com', "'unsafe-eval'"], // unsafe-eval required by Filerobot
+      scriptSrc:      ["'self'", "'unsafe-inline'", 'https://scaleflex.cloudimg.io', 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', "'unsafe-eval'"], // unsafe-eval required by Filerobot
       scriptSrcAttr:  ["'unsafe-inline'"],
-      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
       imgSrc:         ["'self'", 'data:', 'blob:', GHOST_URL, IMMICH_URL].filter(Boolean),
       connectSrc:     ["'self'", GHOST_URL, IMMICH_URL, 'https://api.anthropic.com'].filter(Boolean),
       fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'],
