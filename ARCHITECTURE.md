@@ -115,15 +115,19 @@ ghost-media-manager/
 ### HTML Live Editor
 
 The HTML Live Editor tab is a split-pane workbench for Ghost HTML cards.
-All editor state is local to `initHtmlEditorTab()` in `app.js`.
+Editor state (CodeMirror instance + current HTML value) is local to `initHtmlEditorTab()` in `app.js`.
+It reads from shared `state` caches (`state.allImages`, `state.postsData`) for media and post pickers,
+but does not own or mutate those caches.
 
 Key implementation details:
 - **CodeMirror 5** via CDN (`cdnjs.cloudflare.com`) — htmlmixed mode, Dracula theme
+  ⚠ **Supply-chain note:** the CDN script runs without Subresource Integrity (SRI).
+  Future hardening: bundle CodeMirror locally or add `integrity=` + `crossorigin=anonymous` to the `<script>` tags.
 - `viewportMargin: Infinity` + wrapper scroll (not CM internal scroll)
 - `extractHtmlNodes(lexicalJson)` in `server/lib/lexical.js` — used by the Load HTML Card route
 - CSP: `cdnjs.cloudflare.com` is whitelisted in `scriptSrc` and `styleSrc`
 - Load HTML Card modal fetches `GET /api/posts/:type/:id/html-cards`; clicking a card calls `cm.setValue(card.html)`
-- Insert into Post calls `POST /api/posts/:id` with `mode: 'html'` (appends an HTML card node via `insertHtmlNode`)
+- Insert into Post calls `POST /api/media/insert-into-post` with `mode: 'html'` (appends an HTML card node via `insertHtmlNode`)
 
 ---
 
@@ -180,9 +184,14 @@ const state = {
 }
 ```
 
-The HTML Live Editor tab manages its own local state entirely within
-`initHtmlEditorTab()` — the CodeMirror instance (`cm`) and all related
-handlers are scoped there and do not touch the global `state` object.
+The HTML Live Editor tab manages its own **editor state** locally inside
+`initHtmlEditorTab()`: the CodeMirror instance (`cm`) and the current
+HTML value are not stored on the global `state` object.
+
+It **does** read from shared caches on `state` (for example
+`state.allImages` and `state.postsData`/`postsCache`) when opening media
+or post pickers/modals, but those caches are owned and maintained by the
+global `state` layer, not by the HTML Live Editor itself.
 
 ```javascript
 // HTML Editor local state (inside initHtmlEditorTab)

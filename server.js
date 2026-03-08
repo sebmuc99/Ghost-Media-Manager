@@ -1489,7 +1489,8 @@ app.get('/api/posts/:type/:id/html-cards', requireGhostAuth, async (req, res) =>
     const htmlCards = extractHtmlNodes(post.lexical || empty);
     return res.json({ title: post.title, htmlCards });
   } catch (e) {
-    return res.status(500).json({ error: e.message || 'Network error' });
+    console.error(e);
+    return res.status(500).json({ error: 'Network error' });
   }
 });
 

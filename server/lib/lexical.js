@@ -284,7 +284,12 @@ function insertHtmlNode(lexicalJson, htmlNode, position = 'end') {
 // Extract all html card nodes from a Lexical JSON string.
 // Returns [{ index, html }] for each html-type child of root.
 function extractHtmlNodes(lexicalJson) {
-  const doc = JSON.parse(lexicalJson);
+  let doc;
+  try {
+    doc = JSON.parse(lexicalJson);
+  } catch {
+    return [];
+  }
   const children = (doc.root && doc.root.children) || [];
   return children
     .map((node, index) => ({ index, node }))

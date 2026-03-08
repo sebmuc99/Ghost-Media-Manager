@@ -3868,6 +3868,12 @@ function initHtmlEditorTab() {
   const statusValid = document.getElementById('heStatusValid');
 
   if (cmHost._heInit) return; // already wired
+
+  if (!window.CodeMirror) {
+    toast('CodeMirror failed to load — check your internet connection or ad-blocker', 'error');
+    return;
+  }
+
   cmHost._heInit = true;
 
   // ── Create CodeMirror instance ────────────────────────────────────────────
@@ -4084,8 +4090,10 @@ function initHtmlEditorTab() {
         imgEl.loading = 'lazy';
         thumb.appendChild(imgEl);
         thumb.addEventListener('click', () => {
-          const alt  = (img.filename || '').replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-          const tag  = `<img src="${img.url}" alt="${alt}" style="width:100%;border-radius:8px;" loading="lazy" />`;
+          const alt     = (img.filename || '').replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+          const safeSrc = escapeHtml(img.url || '');
+          const safeAlt = escapeHtml(alt);
+          const tag     = `<img src="${safeSrc}" alt="${safeAlt}" style="width:100%;border-radius:8px;" loading="lazy" />`;
           insertAtCursor(tag);
           overlay.classList.remove('show');
         });
@@ -4182,9 +4190,9 @@ function initHtmlEditorTab() {
           preview.textContent   = card.html.slice(0, 120).replace(/\s+/g, ' ');
           item.appendChild(label);
           item.appendChild(preview);
-          item.addEventListener('click', () => {
+          item.addEventListener('click', async () => {
             if (cm.getValue().trim()) {
-              if (!confirm('Replace current editor content with this HTML card?')) return;
+              if (!await toastConfirm('Replace current editor content with this HTML card?')) return;
             }
             cm.setValue(card.html);
             updatePreview();
