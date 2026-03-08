@@ -124,10 +124,11 @@ function setupListeners() {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-      if (btn.dataset.tab === 'immich') initImmichTab();
-      if (btn.dataset.tab === 'posts')  initPostsTab();
-      if (btn.dataset.tab === 'videos') initVideosTab();
-      if (btn.dataset.tab === 'files')  initFilesTab();
+      if (btn.dataset.tab === 'immich')      initImmichTab();
+      if (btn.dataset.tab === 'posts')       initPostsTab();
+      if (btn.dataset.tab === 'videos')      initVideosTab();
+      if (btn.dataset.tab === 'files')       initFilesTab();
+      if (btn.dataset.tab === 'html-editor') initHtmlEditorTab();
     });
   });
 
@@ -293,6 +294,33 @@ function toast(msg, type = 'info', duration = 3500) {
     el.classList.add('fade-out');
     el.addEventListener('animationend', () => el.remove(), { once: true });
   }, duration);
+}
+
+// Show a toast with Confirm / Cancel buttons; returns a Promise<boolean>
+// okText defaults to 'OK'; pass a custom label for destructive actions (e.g. 'Clear')
+function toastConfirm(msg, okText = 'OK') {
+  return new Promise(resolve => {
+    const c   = document.getElementById('toastContainer');
+    const el  = document.createElement('div');
+    el.className = 'toast warning toast-confirm';
+    const text  = document.createElement('span');
+    text.textContent = msg;
+    const ok  = document.createElement('button');
+    ok.className = 'toast-confirm-btn ok';
+    ok.textContent = okText;
+    const no  = document.createElement('button');
+    no.className = 'toast-confirm-btn cancel';
+    no.textContent = 'Cancel';
+    el.append(text, no, ok);
+    c.appendChild(el);
+    function dismiss(result) {
+      el.classList.add('fade-out');
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+      resolve(result);
+    }
+    ok.addEventListener('click', () => dismiss(true));
+    no.addEventListener('click', () => dismiss(false));
+  });
 }
 
 // ── Login ───────────────────────────────────────────────────────────────────
@@ -3831,4 +3859,427 @@ async function insertGallery() {
     btn.disabled    = false;
     btn.textContent = 'Insert Gallery';
   }
+}
+
+// ── HTML Live Editor ───────────────────────────────────────────────────────────────────────────
+function initHtmlEditorTab() {
+  const cmHost      = document.getElementById('heCmHost');
+  const statusPos   = document.getElementById('heStatusPos');
+  const statusChars = document.getElementById('heStatusChars');
+  const statusValid = document.getElementById('heStatusValid');
+
+  if (cmHost._heInit) return; // already wired
+
+  if (!window.CodeMirror) {
+    toast('CodeMirror failed to load — check your internet connection or ad-blocker', 'error');
+    return;
+  }
+
+  cmHost._heInit = true;
+
+  // ── Create CodeMirror instance ────────────────────────────────────────────
+  const cm = CodeMirror(cmHost, {
+    mode:          'htmlmixed',
+    theme:         'dracula',
+    lineNumbers:   true,
+    indentWithTabs: false,
+    indentUnit:    2,
+    tabSize:       2,
+    lineWrapping:  true,
+    autofocus:     false,
+    viewportMargin: Infinity,
+    extraKeys: {
+      Tab: function(cmInst) {
+        if (cmInst.somethingSelected()) cmInst.indentSelection('add');
+        else cmInst.replaceSelection('  ', 'end');
+      },
+    },
+  });
+
+  // ── Snippet templates ─────────────────────────────────────────────────────
+  const SNIPPETS = {
+    'two-col':
+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;font-family:Georgia,serif">
+  <div>
+    <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:12px">Heading</h2>
+    <p style="color:#374151;line-height:1.7">Your first column text goes here.</p>
+  </div>
+  <div>
+    <img src="" alt="Image" style="width:100%;border-radius:8px;object-fit:cover" />
+  </div>
+</div>`,
+
+    'img-left':
+`<div style="display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start;font-family:Georgia,serif">
+  <div>
+    <img src="" alt="Portrait" style="width:100%;border-radius:8px;object-fit:cover" />
+  </div>
+  <div>
+    <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:12px">Heading</h2>
+    <p style="color:#374151;line-height:1.7">Your content alongside the image.</p>
+  </div>
+</div>`,
+
+    'img-right':
+`<div style="display:grid;grid-template-columns:1fr 240px;gap:24px;align-items:start;font-family:Georgia,serif">
+  <div>
+    <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:12px">Heading</h2>
+    <p style="color:#374151;line-height:1.7">Your content alongside the image.</p>
+  </div>
+  <div>
+    <img src="" alt="Portrait" style="width:100%;border-radius:8px;object-fit:cover" />
+  </div>
+</div>`,
+
+    'callout':
+`<div style="border-left:4px solid #22c55e;background:#f0fdf4;border-radius:6px;padding:16px 20px;font-family:Georgia,serif">
+  <p style="margin:0;font-weight:600;color:#166534;margin-bottom:6px">ℹ️ Note</p>
+  <p style="margin:0;color:#15803d;line-height:1.6">Your callout message goes here.</p>
+</div>`,
+
+    'table':
+`<table style="width:100%;border-collapse:collapse;font-family:Georgia,serif;font-size:14px">
+  <thead>
+    <tr style="background:#f3f4f6">
+      <th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600">Column 1</th>
+      <th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600">Column 2</th>
+      <th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600">Column 3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 1, A</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 1, B</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 1, C</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 2, A</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 2, B</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">Row 2, C</td>
+    </tr>
+  </tbody>
+</table>`,
+
+    'badge':
+`<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;font-family:-apple-system,sans-serif">BC 2024 Wave 2</span>`,
+
+    'tip':
+`<div style="border-left:4px solid #f59e0b;background:#fffbeb;border-radius:6px;padding:16px 20px;font-family:Georgia,serif">
+  <p style="margin:0;font-weight:600;color:#92400e;margin-bottom:6px">💡 Tip</p>
+  <p style="margin:0;color:#92400e;line-height:1.6">Your tip text goes here.</p>
+</div>`,
+
+    'warning':
+`<div style="border-left:4px solid #ef4444;background:#fef2f2;border-radius:6px;padding:16px 20px;font-family:Georgia,serif">
+  <p style="margin:0;font-weight:600;color:#991b1b;margin-bottom:6px">⚠️ Warning</p>
+  <p style="margin:0;color:#991b1b;line-height:1.6">Your warning message goes here.</p>
+</div>`,
+  };
+
+  // ── Preview wrappers ───────────────────────────────────────────────────────
+  const PREVIEW_WRAP = {
+    raw:   html => `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:16px;font-family:-apple-system,sans-serif;line-height:1.6}</style></head><body>${html}</body></html>`,
+    ghost: html => `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#fff;font-family:Georgia,serif;color:#1f2937;line-height:1.75}.gh{max-width:720px;margin:32px auto;padding:0 24px}</style></head><body><div class="gh">${html}</div></body></html>`,
+    dark:  html => `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#111827;color:#f3f4f6;font-family:Georgia,serif;line-height:1.75}.gh{max-width:720px;margin:32px auto;padding:0 24px}</style></head><body><div class="gh">${html}</div></body></html>`,
+  };
+
+  let currentMode = 'raw';
+  const frame = document.getElementById('hePreview');
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function updatePreview() {
+    frame.srcdoc = PREVIEW_WRAP[currentMode](cm.getValue());
+  }
+
+  function updateStatus() {
+    const val    = cm.getValue();
+    const cursor = cm.getCursor();
+    statusPos.textContent   = `Ln ${cursor.line + 1}, Col ${cursor.ch + 1}`;
+    statusChars.textContent = `${val.length} chars`;
+    if (!val.trim()) {
+      statusValid.textContent = '';
+    } else {
+      const open  = (val.match(/</g)  || []).length;
+      const close = (val.match(/>/g)  || []).length;
+      if (open !== close) {
+        statusValid.textContent = '⚠ unclosed tag?';
+        statusValid.style.color = 'var(--warning)';
+      } else {
+        statusValid.textContent = '✓ ready';
+        statusValid.style.color = 'var(--success)';
+      }
+    }
+  }
+
+  function insertAtCursor(text) {
+    const cursor = cm.getCursor();
+    const line   = cm.getLine(cursor.line);
+    const insert = (line.trim() !== '') ? '\n' + text : text;
+    cm.replaceRange(insert, cursor);
+    cm.focus();
+    updatePreview();
+    updateStatus();
+  }
+
+  // ── CodeMirror events ──────────────────────────────────────────────────────
+  cm.on('change',         () => { updatePreview(); updateStatus(); });
+  cm.on('cursorActivity', updateStatus);
+
+  // ── Snippets ──────────────────────────────────────────────────────────────
+  document.querySelectorAll('.he-snippet').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = SNIPPETS[btn.dataset.snippet];
+      if (s) insertAtCursor(s);
+    });
+  });
+
+  // ── Preview modes ─────────────────────────────────────────────────────────
+  document.querySelectorAll('.he-mode').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.he-mode').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMode = btn.dataset.mode;
+      updatePreview();
+    });
+  });
+
+  // ── Copy HTML ─────────────────────────────────────────────────────────────
+  document.getElementById('heCopyBtn').addEventListener('click', async () => {
+    const html = cm.getValue();
+    if (!html.trim()) { toast('Nothing to copy', 'warning'); return; }
+    try {
+      await navigator.clipboard.writeText(html);
+      toast('HTML copied to clipboard ✓', 'success');
+    } catch {
+      toast('Copy failed — use Ctrl+A then Ctrl+C', 'error');
+    }
+  });
+
+  // ── Clear ─────────────────────────────────────────────────────────────────
+  document.getElementById('heClearBtn').addEventListener('click', async () => {
+    if (!cm.getValue().trim()) return;
+    const ok = await toastConfirm('Clear the editor? This cannot be undone.', 'Clear');
+    if (!ok) return;
+    cm.setValue('');
+    updatePreview();
+    updateStatus();
+    cm.focus();
+  });
+
+  // ── Image Picker ──────────────────────────────────────────────────────────
+  document.getElementById('hePickImageBtn').addEventListener('click', () => {
+    const overlay   = document.getElementById('heImagePickerOverlay');
+    const grid      = document.getElementById('heImageGrid');
+    const emptyMsg  = document.getElementById('heImageEmpty');
+    const searchEl  = document.getElementById('heImageSearch');
+
+    const render = (images) => {
+      grid.innerHTML = '';
+      const filtered = searchEl.value.trim().toLowerCase()
+        ? images.filter(img => (img.filename || img.url).toLowerCase().includes(searchEl.value.trim().toLowerCase()))
+        : images;
+      emptyMsg.style.display = filtered.length === 0 ? 'flex' : 'none';
+      filtered.forEach(img => {
+        const thumb = document.createElement('div');
+        thumb.style.cssText = 'cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:border-color .15s';
+        thumb.addEventListener('mouseenter', () => thumb.style.borderColor = 'var(--accent)');
+        thumb.addEventListener('mouseleave', () => thumb.style.borderColor = 'transparent');
+        const imgEl = document.createElement('img');
+        imgEl.src   = img.url;
+        imgEl.alt   = img.filename || '';
+        imgEl.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;display:block';
+        imgEl.loading = 'lazy';
+        thumb.appendChild(imgEl);
+        thumb.addEventListener('click', () => {
+          const alt     = (img.filename || '').replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+          const safeSrc = escapeHtml(img.url || '');
+          const safeAlt = escapeHtml(alt);
+          const tag     = `<img src="${safeSrc}" alt="${safeAlt}" style="width:100%;border-radius:8px;" loading="lazy" />`;
+          insertAtCursor(tag);
+          overlay.classList.remove('show');
+        });
+        grid.appendChild(thumb);
+      });
+    };
+
+    searchEl.value = '';
+    const images = state.allImages;
+    if (images.length > 0) {
+      render(images);
+    } else {
+      grid.innerHTML = '<div style="color:var(--text-muted);padding:20px">Loading…</div>';
+      loadMedia().then(() => render(state.allImages));
+    }
+
+    searchEl.oninput = () => render(state.allImages);
+    overlay.classList.add('show');
+  });
+
+  document.getElementById('hePickerCancelBtn').addEventListener('click', () => {
+    document.getElementById('heImagePickerOverlay').classList.remove('show');
+  });
+
+  // ── Load HTML Card from Post ───────────────────────────────────────────────
+  document.getElementById('heLoadCardBtn').addEventListener('click', () => {
+    const overlay    = document.getElementById('heLoadCardOverlay');
+    const postSel    = document.getElementById('heLoadCardPostSelect');
+    const fetchBtn   = document.getElementById('heLoadCardFetchBtn');
+    const cardList   = document.getElementById('heLoadCardList');
+    const emptyMsg   = document.getElementById('heLoadCardEmpty');
+    const spinner    = document.getElementById('heLoadCardSpinner');
+
+    // Reset state
+    cardList.style.display  = 'none';
+    emptyMsg.style.display  = 'none';
+    spinner.style.display   = 'none';
+    cardList.innerHTML      = '';
+    fetchBtn.disabled       = true;
+    postSel.innerHTML       = '<option value="">— select a post —</option>';
+
+    const fill = (posts) => {
+      posts.forEach(p => {
+        const opt        = document.createElement('option');
+        opt.value        = p.id;
+        opt.dataset.type = p._type === 'page' ? 'pages' : 'posts';
+        opt.textContent  = `${p._type === 'page' ? '[Page] ' : ''}${p.title || '(untitled)'}`;
+        postSel.appendChild(opt);
+      });
+    };
+
+    if (state.postsData.length > 0) fill(state.postsData);
+    else loadPosts().then(() => fill(state.postsData));
+
+    postSel.onchange = () => {
+      fetchBtn.disabled = !postSel.value;
+      cardList.style.display = 'none';
+      emptyMsg.style.display = 'none';
+      cardList.innerHTML = '';
+    };
+
+    fetchBtn.onclick = async () => {
+      const postId   = postSel.value;
+      const postType = postSel.selectedOptions[0]?.dataset.type || 'posts';
+      if (!postId) return;
+
+      spinner.style.display  = 'flex';
+      cardList.style.display = 'none';
+      emptyMsg.style.display = 'none';
+      cardList.innerHTML     = '';
+      fetchBtn.disabled      = true;
+
+      try {
+        const res  = await api(`/api/posts/${postType}/${postId}/html-cards`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+
+        spinner.style.display = 'none';
+        fetchBtn.disabled     = false;
+
+        if (!data.htmlCards || data.htmlCards.length === 0) {
+          emptyMsg.style.display = 'flex';
+          return;
+        }
+
+        data.htmlCards.forEach((card, i) => {
+          const item = document.createElement('div');
+          item.className = 'he-card-item';
+          const label = document.createElement('div');
+          label.className   = 'he-card-item-label';
+          label.textContent = `HTML Card ${i + 1} of ${data.htmlCards.length}`;
+          const preview = document.createElement('div');
+          preview.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+          preview.textContent   = card.html.slice(0, 120).replace(/\s+/g, ' ');
+          item.appendChild(label);
+          item.appendChild(preview);
+          item.addEventListener('click', async () => {
+            if (cm.getValue().trim()) {
+              if (!await toastConfirm('Replace current editor content with this HTML card?', 'Replace')) return;
+            }
+            cm.setValue(card.html);
+            updatePreview();
+            updateStatus();
+            cm.focus();
+            overlay.classList.remove('show');
+            toast(`HTML Card ${i + 1} loaded ✓`, 'success');
+          });
+          cardList.appendChild(item);
+        });
+        cardList.style.display = 'flex';
+
+      } catch (e) {
+        spinner.style.display = 'none';
+        fetchBtn.disabled     = false;
+        toast(`Failed to load cards: ${e.message}`, 'error');
+      }
+    };
+
+    overlay.classList.add('show');
+  });
+
+  document.getElementById('heLoadCardCancelBtn').addEventListener('click', () => {
+    document.getElementById('heLoadCardOverlay').classList.remove('show');
+  });
+
+  // ── Insert into Post ──────────────────────────────────────────────────────
+  document.getElementById('heInsertPostBtn').addEventListener('click', () => {
+    if (!cm.getValue().trim()) { toast('Nothing to insert — editor is empty', 'warning'); return; }
+
+    const sel = document.getElementById('heInsertPostSelect');
+    sel.innerHTML = '<option value="">— select a post —</option>';
+    const fill = (posts) => posts.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value        = p.id;
+      opt.dataset.type = p._type === 'page' ? 'pages' : 'posts';
+      opt.textContent  = `${p._type === 'page' ? '[Page] ' : ''}${p.title || '(untitled)'}`;
+      sel.appendChild(opt);
+    });
+
+    if (state.postsData.length > 0) fill(state.postsData);
+    else loadPosts().then(() => fill(state.postsData));
+
+    document.getElementById('heInsertOverlay').classList.add('show');
+  });
+
+  document.getElementById('heInsertCancelBtn').addEventListener('click', () => {
+    document.getElementById('heInsertOverlay').classList.remove('show');
+  });
+
+  document.getElementById('heInsertConfirmBtn').addEventListener('click', async () => {
+    const sel    = document.getElementById('heInsertPostSelect');
+    const postId = sel.value;
+    if (!postId) { toast('Please select a post.', 'warning'); return; }
+
+    const btn = document.getElementById('heInsertConfirmBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Inserting…';
+
+    try {
+      const postType = sel.selectedOptions[0]?.dataset.type || 'posts';
+      const res = await api('/api/media/insert-into-post', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode:     'html',
+          html:     cm.getValue(),
+          postId,
+          postType,
+          position: document.getElementById('heInsertPosition').value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+
+      toast('HTML card inserted into post ✓', 'success');
+      document.getElementById('heInsertOverlay').classList.remove('show');
+    } catch (e) {
+      toast(`Insert failed: ${e.message}`, 'error');
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Insert into Post';
+    }
+  });
+
+  // ── Initial render ─────────────────────────────────────────────────────────
+  updatePreview();
+  updateStatus();
 }

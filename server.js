@@ -25,7 +25,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 const rateLimit     = require('express-rate-limit');
 
-const { replaceUrlInLexical, insertParagraphNodes, buildImageNode, insertImageNode, buildGalleryNode, insertGalleryNode } = require('./server/lib/lexical');
+const { replaceUrlInLexical, insertParagraphNodes, buildImageNode, insertImageNode, buildGalleryNode, insertGalleryNode, buildHtmlNode, insertHtmlNode, extractHtmlNodes } = require('./server/lib/lexical');
 const { ghostRequest, ghostFetchAll, getPost, updatePost, uploadImage, uploadMedia, uploadFile, getGhostLang } = require('./server/lib/ghost');
 const { walkContentDir, resolveContentPath, urlToContentPath } = require('./server/lib/filesystem');
 const { portraitToLandscape, titleToFilename } = require('./server/lib/imageProcessing');
@@ -81,9 +81,9 @@ app.use(helmet({
       formAction:     ["'self'"],
       frameAncestors: ["'self'"],
       objectSrc:      ["'none'"],
-      scriptSrc:      ["'self'", "'unsafe-inline'", 'https://scaleflex.cloudimg.io', 'https://fonts.googleapis.com', "'unsafe-eval'"], // unsafe-eval required by Filerobot
+      scriptSrc:      ["'self'", "'unsafe-inline'", 'https://scaleflex.cloudimg.io', 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', "'unsafe-eval'"], // unsafe-eval required by Filerobot
       scriptSrcAttr:  ["'unsafe-inline'"],
-      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
       imgSrc:         ["'self'", 'data:', 'blob:', GHOST_URL, IMMICH_URL].filter(Boolean),
       connectSrc:     ["'self'", GHOST_URL, IMMICH_URL, 'https://api.anthropic.com'].filter(Boolean),
       fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'],
@@ -978,7 +978,22 @@ app.post('/api/media/insert-into-post',
 
       let newLexical;
 
-      if (mode === 'gallery') {
+      if (mode === 'html') {
+        const { html } = req.body;
+
+        if (typeof html !== 'string' || !html.trim())
+          return res.status(400).json({ error: 'Missing html' });
+        if (html.length > 102400)
+          return res.status(400).json({ error: 'html payload exceeds 100 KB limit' });
+
+        const validHtmlPositions = ['end', 'beginning'];
+        if (!validHtmlPositions.includes(position))
+          return res.status(400).json({ error: 'position for html must be "end" or "beginning"' });
+
+        const htmlNode = buildHtmlNode(html);
+        newLexical = insertHtmlNode(post.lexical, htmlNode, position);
+
+      } else if (mode === 'gallery') {
         const { imageUrls } = req.body;
 
         if (!Array.isArray(imageUrls) || imageUrls.length < 2)
@@ -1455,6 +1470,26 @@ app.get('/api/posts/:type/:id', requireGhostAuth, async (req, res) => {
     item._type = type === 'pages' ? 'page' : 'post';
     return res.json(item);
   } catch {
+    return res.status(500).json({ error: 'Network error' });
+  }
+});
+
+// ── Posts: list HTML cards in a post (for HTML editor Load feature) ───────────────────────
+app.get('/api/posts/:type/:id/html-cards', requireGhostAuth, async (req, res) => {
+  const apiKey       = req.apiKey;
+  const { type, id } = req.params;
+  if (!['posts', 'pages'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+  try {
+    const r = await ghostRequest(apiKey, `/${type}/${id}/?formats=lexical&fields=id,title,lexical`);
+    if (!r.ok) return res.status(r.status).json({ error: `Ghost error ${r.status}` });
+    const data = await r.json();
+    const post = (data[type] || [])[0];
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+    const empty = '{"root":{"children":[],"direction":null,"format":"","indent":0,"type":"root","version":1}}';
+    const htmlCards = extractHtmlNodes(post.lexical || empty);
+    return res.json({ title: post.title, htmlCards });
+  } catch (e) {
+    console.error(e);
     return res.status(500).json({ error: 'Network error' });
   }
 });

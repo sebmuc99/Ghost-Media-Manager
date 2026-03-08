@@ -8,6 +8,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+<!-- CodeMirror 5 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/htmlmixed/htmlmixed.min.js"></script>
 <style>
 /* ── Image Editor overlay ── */
 #editorOverlay {
@@ -382,6 +390,15 @@ select.sort-select {
 .toast.fade-out { animation: toastOut .25s ease forwards; }
 @keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0);   } }
 @keyframes toastOut { from { opacity: 1; transform: translateY(0);   } to { opacity: 0; transform: translateY(12px); } }
+@keyframes toastConfirmIn { from { opacity: 0; transform: translate(-50%, -48%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+.toast-confirm { gap: 10px; position: fixed !important; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; animation: toastConfirmIn .2s ease forwards; }
+.toast-confirm span { flex: 1; }
+.toast-confirm-btn {
+  border: none; border-radius: 4px; padding: 4px 10px; font-size: 12px;
+  cursor: pointer; font-weight: 600; white-space: nowrap;
+}
+.toast-confirm-btn.ok     { background: var(--danger);  color: #fff; }
+.toast-confirm-btn.cancel { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
 
 /* ── Posts tab ── */
 .posts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -515,6 +532,81 @@ select.sort-select {
 .card-btn-dl     { background: rgba(76,175,136,.12); color: var(--success); }
 .card-btn-dl:hover { background: rgba(76,175,136,.25); }
 
+/* ── HTML Live Editor ── */
+.html-editor-panel { padding: 0 !important; overflow: hidden !important; }
+.he-toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  background: var(--surface); flex-shrink: 0;
+}
+.he-snippets { display: flex; align-items: center; gap: 5px; flex: 1; flex-wrap: wrap; min-width: 0; }
+.he-snippets-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0; margin-right: 2px; }
+.he-snippet {
+  padding: 3px 9px; font-size: 12px; border: 1px solid var(--border);
+  border-radius: 5px; cursor: pointer; background: var(--surface2); color: var(--text-muted);
+  transition: all var(--transition); white-space: nowrap;
+}
+.he-snippet:hover { border-color: var(--accent); color: var(--text); background: var(--accent-subtle); }
+.he-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.he-split { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+.he-editor-pane, .he-preview-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.he-editor-pane { border-right: 1px solid var(--border); }
+.he-pane-header {
+  padding: 5px 12px; font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  color: var(--text-muted); background: var(--surface2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.he-editor-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+.he-line-nums {
+  font-family: 'Roboto Mono', 'Fira Mono', Consolas, monospace; font-size: 12px;
+  line-height: 20px; padding: 10px 8px 10px 10px; color: var(--text-dim);
+  text-align: right; background: var(--surface); user-select: none;
+  white-space: pre; overflow: hidden; flex-shrink: 0; min-width: 34px;
+  border-right: 1px solid var(--border);
+}
+.he-textarea {
+  flex: 1; font-family: 'Roboto Mono', 'Fira Mono', Consolas, monospace; font-size: 12px;
+  line-height: 20px; padding: 10px 12px; background: var(--surface); color: var(--text);
+  border: none; outline: none; resize: none; overflow-y: auto; overflow-x: auto;
+  tab-size: 2; white-space: pre;
+}
+.he-textarea::placeholder { color: var(--text-dim); }
+.he-mode-btns { display: flex; gap: 3px; }
+.he-mode {
+  padding: 2px 9px; font-size: 11px; border-radius: 4px;
+  border: 1px solid var(--border); cursor: pointer;
+  background: transparent; color: var(--text-muted); transition: all var(--transition);
+}
+.he-mode:hover { border-color: var(--accent); color: var(--text); }
+.he-mode.active { background: var(--surface3); color: var(--text); border-color: var(--border); }
+.he-preview-pane iframe { flex: 1; width: 100%; border: none; background: #fff; display: block; }
+.he-statusbar {
+  display: flex; gap: 16px; padding: 4px 14px; font-size: 11px;
+  color: var(--text-dim); background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0;
+}
+/* CodeMirror host wrapper inside editor body */
+.he-cm-host {
+  flex: 1; overflow-y: auto; overflow-x: auto; min-width: 0;
+}
+.he-cm-host .CodeMirror {
+  height: auto;
+  font-family: 'Roboto Mono', 'Fira Mono', Consolas, monospace;
+  font-size: 12px; line-height: 1.67;
+  border: none;
+}
+.he-cm-host .CodeMirror-scroll { overflow: visible !important; max-height: none !important; }
+.he-cm-host .CodeMirror-sizer { min-height: unset; }
+/* Load-card modal card list */
+.he-card-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; padding: 2px 0; }
+.he-card-item {
+  border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; cursor: pointer;
+  font-family: 'Roboto Mono', Consolas, monospace; font-size: 11px; color: var(--text-muted);
+  background: var(--surface2); white-space: pre; overflow: hidden; text-overflow: ellipsis;
+  transition: border-color var(--transition), background var(--transition);
+}
+.he-card-item:hover { border-color: var(--accent); background: var(--accent-subtle); color: var(--text); }
+.he-card-item-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .header-nav .tab-btn { padding: 6px 9px; font-size: 12px; }
@@ -564,6 +656,7 @@ select.sort-select {
       <button class="tab-btn" data-tab="files"  id="tabBtnFiles">📁 Files</button>
       <button class="tab-btn" data-tab="posts">📄 Posts</button>
       <button class="tab-btn" data-tab="immich">📷 Immich</button>
+      <button class="tab-btn" data-tab="html-editor">&lt;/&gt; HTML Editor</button>
       <button class="tab-btn" data-tab="settings">⚙ Settings</button>
     </nav>
     <button class="btn btn-ghost btn-sm" id="logoutBtn" style="margin-left:8px">Logout</button>
@@ -678,6 +771,55 @@ select.sort-select {
           <div id="photoGrid" class="immich-photo-grid"></div>
           <div id="photoLoading" class="loading-state" style="display:none"><div class="spinner"></div></div>
         </div>
+      </div>
+    </div>
+
+    <!-- ── HTML Live Editor tab ── -->
+    <div class="tab-panel html-editor-panel" id="tab-html-editor">
+      <div class="he-toolbar">
+        <div class="he-snippets">
+          <span class="he-snippets-label">Snippets:</span>
+          <button class="he-snippet" data-snippet="two-col">2-Column</button>
+          <button class="he-snippet" data-snippet="img-left">Image Left</button>
+          <button class="he-snippet" data-snippet="img-right">Image Right</button>
+          <button class="he-snippet" data-snippet="callout">Callout</button>
+          <button class="he-snippet" data-snippet="table">Table</button>
+          <button class="he-snippet" data-snippet="badge">Badge</button>
+          <button class="he-snippet" data-snippet="tip">💡 Tip</button>
+          <button class="he-snippet" data-snippet="warning">⚠️ Warning</button>
+        </div>
+        <div class="he-actions">
+          <button class="btn btn-ghost btn-sm" id="hePickImageBtn">🖼 Insert Image</button>
+          <button class="btn btn-ghost btn-sm" id="heLoadCardBtn">📂 Load HTML Card</button>
+          <button class="btn btn-ghost btn-sm" id="heClearBtn">Clear</button>
+          <button class="btn btn-ghost btn-sm" id="heCopyBtn">📋 Copy HTML</button>
+          <button class="btn btn-primary btn-sm" id="heInsertPostBtn">→ Insert into Post</button>
+        </div>
+      </div>
+      <div class="he-split">
+        <div class="he-editor-pane">
+          <div class="he-pane-header">HTML EDITOR</div>
+          <div class="he-editor-body">
+            <!-- CodeMirror mounts directly into #heCmHost -->
+            <div class="he-cm-host" id="heCmHost"></div>
+          </div>
+        </div>
+        <div class="he-preview-pane">
+          <div class="he-pane-header">
+            PREVIEW
+            <div class="he-mode-btns">
+              <button class="he-mode active" data-mode="raw">Raw</button>
+              <button class="he-mode" data-mode="ghost">Ghost Post</button>
+              <button class="he-mode" data-mode="dark">Dark</button>
+            </div>
+          </div>
+          <iframe id="hePreview" sandbox="" frameborder="0"></iframe>
+        </div>
+      </div>
+      <div class="he-statusbar">
+        <span id="heStatusPos">Ln 1, Col 1</span>
+        <span id="heStatusChars">0 chars</span>
+        <span id="heStatusValid"></span>
       </div>
     </div>
 
@@ -1333,6 +1475,65 @@ select.sort-select {
     <div class="modal-footer">
       <button class="btn btn-ghost" id="insertGalleryCancelBtn">Cancel</button>
       <button class="btn btn-primary" id="insertGalleryConfirmBtn">Insert Gallery</button>
+    </div>
+  </div>
+</div>
+
+<!-- HTML Editor — Image Picker overlay -->
+<div class="overlay" id="heImagePickerOverlay">
+  <div class="modal" style="max-width:760px;width:94vw">
+    <div class="modal-title">🖼 Pick an Image</div>
+    <div class="field-group">
+      <input type="text" class="search-input" id="heImageSearch" placeholder="Search images…" style="width:100%">
+    </div>
+    <div id="heImageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:380px;overflow-y:auto;padding:4px 0"></div>
+    <div id="heImageEmpty" class="empty-state" style="display:none"><span>No images found</span></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="hePickerCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- HTML Editor — Load HTML Card overlay -->
+<div class="overlay" id="heLoadCardOverlay">
+  <div class="modal" style="max-width:680px;width:94vw">
+    <div class="modal-title">📂 Load HTML Card from Post</div>
+    <div class="field-group">
+      <label class="field-label">Post or Page</label>
+      <select class="text-input" id="heLoadCardPostSelect" style="width:100%">
+        <option value="">— select a post —</option>
+      </select>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="heLoadCardFetchBtn" style="margin-bottom:12px" disabled>Fetch HTML cards</button>
+    <div id="heLoadCardList" class="he-card-list" style="display:none"></div>
+    <div id="heLoadCardEmpty" class="empty-state" style="display:none"><span>No HTML cards found in this post</span></div>
+    <div id="heLoadCardSpinner" class="loading-state" style="display:none"><div class="spinner"></div><span>Loading…</span></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="heLoadCardCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- HTML Editor — Insert into Post overlay -->
+<div class="overlay" id="heInsertOverlay">
+  <div class="modal">
+    <div class="modal-title">📌 Insert HTML into Post</div>
+    <div class="field-group">
+      <label class="field-label">Post or Page</label>
+      <select class="text-input" id="heInsertPostSelect" style="width:100%">
+        <option value="">— select a post —</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Insert position</label>
+      <select class="text-input" id="heInsertPosition" style="width:100%">
+        <option value="end">End of post</option>
+        <option value="beginning">Beginning of post</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="heInsertCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="heInsertConfirmBtn">Insert into Post</button>
     </div>
   </div>
 </div>
