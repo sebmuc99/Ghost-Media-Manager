@@ -297,7 +297,8 @@ function toast(msg, type = 'info', duration = 3500) {
 }
 
 // Show a toast with Confirm / Cancel buttons; returns a Promise<boolean>
-function toastConfirm(msg) {
+// okText defaults to 'OK'; pass a custom label for destructive actions (e.g. 'Clear')
+function toastConfirm(msg, okText = 'OK') {
   return new Promise(resolve => {
     const c   = document.getElementById('toastContainer');
     const el  = document.createElement('div');
@@ -306,7 +307,7 @@ function toastConfirm(msg) {
     text.textContent = msg;
     const ok  = document.createElement('button');
     ok.className = 'toast-confirm-btn ok';
-    ok.textContent = 'Clear';
+    ok.textContent = okText;
     const no  = document.createElement('button');
     no.className = 'toast-confirm-btn cancel';
     no.textContent = 'Cancel';
@@ -4057,7 +4058,7 @@ function initHtmlEditorTab() {
   // ── Clear ─────────────────────────────────────────────────────────────────
   document.getElementById('heClearBtn').addEventListener('click', async () => {
     if (!cm.getValue().trim()) return;
-    const ok = await toastConfirm('Clear the editor? This cannot be undone.');
+    const ok = await toastConfirm('Clear the editor? This cannot be undone.', 'Clear');
     if (!ok) return;
     cm.setValue('');
     updatePreview();
@@ -4192,7 +4193,7 @@ function initHtmlEditorTab() {
           item.appendChild(preview);
           item.addEventListener('click', async () => {
             if (cm.getValue().trim()) {
-              if (!await toastConfirm('Replace current editor content with this HTML card?')) return;
+              if (!await toastConfirm('Replace current editor content with this HTML card?', 'Replace')) return;
             }
             cm.setValue(card.html);
             updatePreview();
