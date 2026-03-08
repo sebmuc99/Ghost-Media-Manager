@@ -57,6 +57,7 @@ Unraid, or any Docker host.
 - One-click Markdown / HTML copy for any file
 
 ### Content & AI
+- **HTML Live Editor** — split-pane workbench for Ghost HTML cards with CodeMirror syntax highlighting, 8 built-in snippets, live preview, and direct post insertion
 - Post management — browse all posts with tag and excerpt status
 - Make Landscape — convert portrait feature images to 16:9
 - AI-powered excerpt generation (Anthropic Claude)

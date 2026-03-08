@@ -296,6 +296,32 @@ function toast(msg, type = 'info', duration = 3500) {
   }, duration);
 }
 
+// Show a toast with Confirm / Cancel buttons; returns a Promise<boolean>
+function toastConfirm(msg) {
+  return new Promise(resolve => {
+    const c   = document.getElementById('toastContainer');
+    const el  = document.createElement('div');
+    el.className = 'toast warning toast-confirm';
+    const text  = document.createElement('span');
+    text.textContent = msg;
+    const ok  = document.createElement('button');
+    ok.className = 'toast-confirm-btn ok';
+    ok.textContent = 'Clear';
+    const no  = document.createElement('button');
+    no.className = 'toast-confirm-btn cancel';
+    no.textContent = 'Cancel';
+    el.append(text, no, ok);
+    c.appendChild(el);
+    function dismiss(result) {
+      el.classList.add('fade-out');
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+      resolve(result);
+    }
+    ok.addEventListener('click', () => dismiss(true));
+    no.addEventListener('click', () => dismiss(false));
+  });
+}
+
 // ── Login ───────────────────────────────────────────────────────────────────
 async function handleLogin() {
   const apiKey = document.getElementById('inputApiKey').value.trim();
@@ -3852,8 +3878,9 @@ function initHtmlEditorTab() {
     indentWithTabs: false,
     indentUnit:    2,
     tabSize:       2,
-    lineWrapping:  false,
+    lineWrapping:  true,
     autofocus:     false,
+    viewportMargin: Infinity,
     extraKeys: {
       Tab: function(cmInst) {
         if (cmInst.somethingSelected()) cmInst.indentSelection('add');
@@ -4022,9 +4049,10 @@ function initHtmlEditorTab() {
   });
 
   // ── Clear ─────────────────────────────────────────────────────────────────
-  document.getElementById('heClearBtn').addEventListener('click', () => {
+  document.getElementById('heClearBtn').addEventListener('click', async () => {
     if (!cm.getValue().trim()) return;
-    if (!confirm('Clear the editor? This cannot be undone.')) return;
+    const ok = await toastConfirm('Clear the editor? This cannot be undone.');
+    if (!ok) return;
     cm.setValue('');
     updatePreview();
     updateStatus();

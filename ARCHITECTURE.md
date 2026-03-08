@@ -94,6 +94,11 @@ ghost-media-manager/
 | POST | `/api/tools/import-wordpress` | Full WP import (SSE stream) |
 | GET | `/api/tools/import-wordpress-log/:token` | Download import log |
 
+### HTML Editor
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/posts/:type/:id/html-cards` | Extract all HTML card nodes from a post's Lexical JSON |
+
 ### Ghost
 | Method | Route | Description |
 |--------|-------|-------------|
@@ -106,6 +111,21 @@ ghost-media-manager/
 | GET | `/api/health` | Health check endpoint |
 
 ## Critical Rules
+
+### HTML Live Editor
+
+The HTML Live Editor tab is a split-pane workbench for Ghost HTML cards.
+All editor state is local to `initHtmlEditorTab()` in `app.js`.
+
+Key implementation details:
+- **CodeMirror 5** via CDN (`cdnjs.cloudflare.com`) — htmlmixed mode, Dracula theme
+- `viewportMargin: Infinity` + wrapper scroll (not CM internal scroll)
+- `extractHtmlNodes(lexicalJson)` in `server/lib/lexical.js` — used by the Load HTML Card route
+- CSP: `cdnjs.cloudflare.com` is whitelisted in `scriptSrc` and `styleSrc`
+- Load HTML Card modal fetches `GET /api/posts/:type/:id/html-cards`; clicking a card calls `cm.setValue(card.html)`
+- Insert into Post calls `POST /api/posts/:id` with `mode: 'html'` (appends an HTML card node via `insertHtmlNode`)
+
+---
 
 ### Lexical JSON (CRITICAL — read before touching posts)
 
@@ -158,4 +178,14 @@ const state = {
   selectedFiles:  [],     // selected file URLs (Select Mode)
   // ... modal targets, flags
 }
+```
+
+The HTML Live Editor tab manages its own local state entirely within
+`initHtmlEditorTab()` — the CodeMirror instance (`cm`) and all related
+handlers are scoped there and do not touch the global `state` object.
+
+```javascript
+// HTML Editor local state (inside initHtmlEditorTab)
+const cm = CodeMirror(cmHost, { mode: 'htmlmixed', theme: 'dracula', ... });
+// All operations: cm.getValue(), cm.setValue(), cm.replaceRange()
 ```

@@ -8,6 +8,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 ### Planned
 - Custom Ghost Theme with gallery lightbox + share buttons
 
+## [1.1.0] - 2026-03-08
+
+### Added
+- **HTML Live Editor tab** — split-pane workbench for Ghost HTML cards
+  - CodeMirror 5 syntax highlighting (htmlmixed mode, Dracula theme)
+  - 8 built-in snippets: 2-Column, Image Left, Image Right, Callout, Table, Badge, Tip, Warning
+  - Real-time preview in three modes: Raw, Ghost Post, Dark
+  - Insert image from media library directly into editor
+  - Load HTML Card from any existing post (picks up all HTML card nodes)
+  - Insert into Post — appends a new HTML card node via Ghost Admin API
+  - Copy HTML to clipboard
+  - Clear with centered toast confirmation (no browser dialog)
+  - Status bar showing line, column and character count
+
 ## [1.0.0] - 2026-03-07
 
 ### Added
